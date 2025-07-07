@@ -289,47 +289,51 @@ async function updateMetricsSections(data) {
             oldCards[card.getAttribute('data-metric')] = card;
         });
         for (const name of categories[category]) {
-            if (!data.metrics || typeof data.metrics[name] !== 'number' || isNaN(data.metrics[name])) {
-                console.warn('Нет метрики или не число:', name, data.metrics ? data.metrics[name] : undefined);
-                continue;
-            }
-            let card = oldCards[name];
-            const shortName = stripCategoryPrefix(name, categoryConfig);
-            if (!card) {
-                card = document.createElement('div');
-                card.className = 'metric-card card';
-                card.setAttribute('data-metric', name);
-                card.innerHTML = `
-                    <div class="metric-name" title="${name}">${toTitleCase(shortName)}</div>
-                    <div class="metric-value"></div>
-                    <div class="metric-history-plot" id="plot-${name}"></div>
-                `;
-                grid.appendChild(card);
-            }
-            const valueDiv = card.querySelector('.metric-value');
-            const newValue = data.metrics[name].toFixed(2);
-            if (valueDiv.textContent !== newValue) {
-                valueDiv.textContent = newValue;
-                fadeIn(valueDiv);
-            }
-            // Только для секции System рисуем график, если есть история
-            if (category === 'System') {
-                const plotDiv = card.querySelector('.metric-history-plot');
-                if (!(plotDiv && history && Array.isArray(history[name]) && history[name].length > 0)) {
-                    if (!history || !Array.isArray(history[name]) || history[name].length === 0) {
-                        console.warn('Нет истории для метрики:', name, history ? history[name] : undefined);
-                    }
+            try {
+                if (!data.metrics || typeof data.metrics[name] !== 'number' || isNaN(data.metrics[name])) {
+                    console.warn('Нет метрики или не число:', name, data.metrics ? data.metrics[name] : undefined);
                     continue;
                 }
-                const x = history[name].map(([ts, _]) => new Date(ts * 1000));
-                const y = history[name].map(([_, v]) => v);
-                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
-                    margin: {t: 10, b: 30, l: 40, r: 10},
-                    height: 120,
-                    xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
-                    yaxis: {showgrid: true, zeroline: false},
-                    displayModeBar: false
-                }, {displayModeBar: false});
+                let card = oldCards[name];
+                const shortName = stripCategoryPrefix(name, categoryConfig);
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className = 'metric-card card';
+                    card.setAttribute('data-metric', name);
+                    card.innerHTML = `
+                        <div class="metric-name" title="${name}">${toTitleCase(shortName)}</div>
+                        <div class="metric-value"></div>
+                        <div class="metric-history-plot" id="plot-${name}"></div>
+                    `;
+                    grid.appendChild(card);
+                }
+                const valueDiv = card.querySelector('.metric-value');
+                const newValue = data.metrics[name].toFixed(2);
+                if (valueDiv.textContent !== newValue) {
+                    valueDiv.textContent = newValue;
+                    fadeIn(valueDiv);
+                }
+                // Только для секции System рисуем график, если есть история
+                if (category === 'System') {
+                    const plotDiv = card.querySelector('.metric-history-plot');
+                    if (!(plotDiv && history && Array.isArray(history[name]) && history[name].length > 0)) {
+                        if (!history || !Array.isArray(history[name]) || history[name].length === 0) {
+                            console.warn('Нет истории для метрики:', name, history ? history[name] : undefined);
+                        }
+                        continue;
+                    }
+                    const x = history[name].map(([ts, _]) => new Date(ts * 1000));
+                    const y = history[name].map(([_, v]) => v);
+                    Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
+                        margin: {t: 10, b: 30, l: 40, r: 10},
+                        height: 120,
+                        xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
+                        yaxis: {showgrid: true, zeroline: false},
+                        displayModeBar: false
+                    }, {displayModeBar: false});
+                }
+            } catch (err) {
+                logJsError(`updateMetricsSections: ${name} (${category})`, err);
             }
         }
     }

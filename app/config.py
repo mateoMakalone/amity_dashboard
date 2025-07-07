@@ -134,3 +134,30 @@ PROMINENT_METRICS = {
         "format": "fixed3"
     }
 }
+
+IGNORE_METRICS = [
+    # PostgreSQL
+    "postgres_buffers_clean_total",
+    "postgres_rows_dead",
+    "postgres_blocks_hits_total",
+    "postgres_checkpoints_requested_total",
+    "postgres_size",
+    # JVM
+    "jvm_buffer_count_buffers",
+    "jvm_buffer_memory_used_bytes",
+    "jvm_buffer_total_capacity_bytes",
+    "jvm_classes_unloaded_classes_total",
+    "jvm_gc_live_data_size_bytes",
+    "jvm_memory_committed_bytes",
+    "jvm_memory_max_bytes",
+    # Для jvm_memory_used_bytes с area=nonheap — фильтровать по лейблу на фронте
+    # Jetty
+    "jetty_connections_bytes_in_bytes_max",
+    "jetty_connections_bytes_out_bytes_max",
+    "jetty_connections_messages_in_messages_total",
+    "jetty_connections_messages_out_messages_total",
+    "jetty_server_dispatches_open_seconds_max",
+    "jetty_server_async_waits_operations",
+    "jetty_server_async_dispatches_total",
+    "jetty_server_async_expires_total"
+]

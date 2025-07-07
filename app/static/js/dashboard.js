@@ -50,9 +50,55 @@ async function fetchHistory() {
     return await resp.json();
 }
 
+// Получить список игнорируемых метрик из data.config или локально
+function getIgnoreMetrics(config) {
+    // Ищем IGNORE_METRICS в config, если нет — используем дефолт
+    if (config && config.IGNORE_METRICS) return config.IGNORE_METRICS;
+    return [
+        "postgres_buffers_clean_total",
+        "postgres_rows_dead",
+        "postgres_blocks_hits_total",
+        "postgres_checkpoints_requested_total",
+        "postgres_size",
+        "jvm_buffer_count_buffers",
+        "jvm_buffer_memory_used_bytes",
+        "jvm_buffer_total_capacity_bytes",
+        "jvm_classes_unloaded_classes_total",
+        "jvm_gc_live_data_size_bytes",
+        "jvm_memory_committed_bytes",
+        "jvm_memory_max_bytes",
+        "jetty_connections_bytes_in_bytes_max",
+        "jetty_connections_bytes_out_bytes_max",
+        "jetty_connections_messages_in_messages_total",
+        "jetty_connections_messages_out_messages_total",
+        "jetty_server_dispatches_open_seconds_max",
+        "jetty_server_async_waits_operations",
+        "jetty_server_async_dispatches_total",
+        "jetty_server_async_expires_total"
+    ];
+}
+
+function isIgnoredMetric(metricName, config) {
+    const ignore = getIgnoreMetrics(config);
+    // Фильтрация по base_name
+    const base = metricName.split('{')[0];
+    if (ignore.includes(base)) return true;
+    // Спец. фильтр для jvm_memory_used_bytes с area=nonheap
+    if (base === 'jvm_memory_used_bytes' && metricName.includes('area="nonheap"')) return true;
+    // Спец. фильтр для jvm_memory_committed_bytes по CodeHeap, Metaspace, Compressed Class Space
+    if (base === 'jvm_memory_committed_bytes' &&
+        (metricName.includes('CodeHeap') || metricName.includes('Metaspace') || metricName.includes('Compressed Class Space')))
+        return true;
+    // Спец. фильтр для jvm_memory_used_bytes по CodeHeap, Metaspace, Compressed Class Space
+    if (base === 'jvm_memory_used_bytes' &&
+        (metricName.includes('CodeHeap') || metricName.includes('Metaspace') || metricName.includes('Compressed Class Space')))
+        return true;
+    return false;
+}
+
+// Фильтрация в KPI
 async function updateProminentMetrics(data) {
     const container = document.getElementById('prominent-metrics');
-    // Не удаляем карточки, только обновляем значения и графики
     const oldCards = {};
     container.querySelectorAll('.key-metric-card').forEach(card => {
         oldCards[card.getAttribute('data-metric')] = card;
@@ -60,6 +106,7 @@ async function updateProminentMetrics(data) {
     let insertAfter = container.querySelector('.section-title');
     const history = await fetchHistory();
     for (const [metricName, config] of Object.entries(data.prominent)) {
+        if (isIgnoredMetric(metricName, data.config)) continue;
         if (data.metrics[metricName] !== undefined) {
             let card = oldCards[metricName];
             const category = getCategoryConfig(getMetricCategory(metricName, data.config), data.config);
@@ -122,11 +169,13 @@ function stripCategoryPrefix(metricName, categoryConfig) {
     return metricName;
 }
 
+// Фильтрация в секциях
 async function updateMetricsSections(data) {
     const container = document.getElementById('metrics-sections');
     const categories = {};
     for (const metricName in data.metrics) {
         if (data.prominent[metricName] || metricName.includes('_avg_time')) continue;
+        if (isIgnoredMetric(metricName, data.config)) continue;
         const category = getMetricCategory(metricName, data.config);
         if (!categories[category]) categories[category] = [];
         categories[category].push(metricName);

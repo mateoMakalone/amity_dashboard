@@ -201,7 +201,7 @@ async function updateProminentMetrics(data) {
         card.style = cardStyle;
         // Обновляем только данные графика
         const plotDiv = card.querySelector('.metric-history-plot');
-        if (plotDiv && history[metricName]) {
+        if (plotDiv && history && history[metricName] && Array.isArray(history[metricName]) && history[metricName].length > 0) {
             const x = history[metricName].map(([ts, _]) => new Date(ts * 1000));
             const y = history[metricName].map(([_, v]) => v);
             Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: plotColor}}], {
@@ -316,7 +316,7 @@ async function updateMetricsSections(data) {
             // Только для секции System рисуем график
             if (category === 'System') {
                 const plotDiv = card.querySelector('.metric-history-plot');
-                if (plotDiv && Array.isArray(history[name]) && history[name].length > 0) {
+                if (plotDiv && history && history[name] && Array.isArray(history[name]) && history[name].length > 0) {
                     const x = history[name].map(([ts, _]) => new Date(ts * 1000));
                     const y = history[name].map(([_, v]) => v);
                     Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
@@ -356,8 +356,22 @@ function updateDashboard() {
                     document.getElementById('error').textContent = data && data.error ? `Error: ${data.error}` : 'No data received';
                     return;
                 }
-                await updateProminentMetrics(data);
-                await updateMetricsSections(data);
+                try {
+                    await updateProminentMetrics(data);
+                } catch (err) {
+                    const errorEl = document.getElementById('error');
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = `KPI error: ${err.message}`;
+                    console.error('KPI error:', err);
+                }
+                try {
+                    await updateMetricsSections(data);
+                } catch (err) {
+                    const errorEl = document.getElementById('error');
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = `Section error: ${err.message}`;
+                    console.error('Section error:', err);
+                }
                 document.getElementById('last-updated').textContent =
                     new Date(data.last_updated * 1000).toLocaleString();
             } catch (err) {

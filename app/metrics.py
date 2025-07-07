@@ -4,6 +4,8 @@ import time
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric
 from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, HISTORY_LENGTH, METRICS_CONFIG, PROMINENT_METRICS
+import json
+import os
 
 HISTORY_SECONDS = 3600  # 1 час
 HISTORY_POINTS = int(HISTORY_SECONDS / UPDATE_INTERVAL)
@@ -17,6 +19,19 @@ metrics_data = {
 }
 
 lock = threading.Lock()
+
+LOG_PATH = os.path.join(os.path.dirname(__file__), 'metrics_log.jsonl')
+
+def log_metrics(parsed, kpi):
+    try:
+        with open(LOG_PATH, 'a', encoding='utf-8') as f:
+            f.write(json.dumps({
+                'all_metrics': list(parsed.keys()),
+                'metrics': parsed,
+                'kpi': kpi
+            }, ensure_ascii=False) + '\n')
+    except Exception as e:
+        print(f'Logger error: {e}')
 
 def update_metrics():
     while True:
@@ -113,6 +128,8 @@ def get_metrics_data():
     with lock:
         parsed = metrics_data["metrics"]
         kpi = get_kpi_metrics(parsed)
+        # Логируем все метрики и KPI
+        log_metrics(parsed, kpi)
         # Обновляем history для KPI-метрик
         for k, v in kpi.items():
             metrics_data["history"][k].append((metrics_data["last_updated"], v))

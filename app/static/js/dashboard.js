@@ -342,16 +342,24 @@ function updateDashboard() {
     fetch('/data')
         .then(r => r.json())
         .then(async data => {
-            toggleSpinner(false);
-            if (!data || typeof data !== 'object' || data.error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = data && data.error ? `Error: ${data.error}` : 'No data received';
-                return;
+            try {
+                toggleSpinner(false);
+                if (!data || typeof data !== 'object' || data.error) {
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = data && data.error ? `Error: ${data.error}` : 'No data received';
+                    return;
+                }
+                await updateProminentMetrics(data);
+                await updateMetricsSections(data);
+                document.getElementById('last-updated').textContent =
+                    new Date(data.last_updated * 1000).toLocaleString();
+            } catch (err) {
+                toggleSpinner(false);
+                const errorEl = document.getElementById('error');
+                errorEl.style.display = 'block';
+                errorEl.textContent = `Request failed: ${err.message}`;
+                console.error('Dashboard update error:', err);
             }
-            await updateProminentMetrics(data);
-            await updateMetricsSections(data);
-            document.getElementById('last-updated').textContent =
-                new Date(data.last_updated * 1000).toLocaleString();
         })
         .catch(err => {
             toggleSpinner(false);

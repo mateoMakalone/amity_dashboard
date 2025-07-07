@@ -1,3 +1,4 @@
+DASHBOARD_DEBUG = True  # Меняйте на True для включения debug-режима
 METRICS_URL = "http://ваш-эндпоинт/metrics"
 UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0
@@ -63,31 +64,61 @@ PROMINENT_METRICS = {
     "tx_pool_size": {
         "title": "Transaction Pool",
         "unit": "",
-        "color": "#8e44ad",
+        "color": "#145a32",
         "format": "fixed0"
     },
-    "postgres_connections": {
-        "title": "DB Connections", 
-        "unit": "",
-        "color": "#3498db",
-        "format": "fixed0"
-    },
-    "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SUCCESS\",status=\"200\",}": {
-        "title": "POST Requests",
-        "unit": "",
-        "color": "#e74c3c",
-        "format": "roundFormat"
-    },
-    "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\",}": {
-        "title": "POST Time Total",
+    "jetty_server_requests_seconds_avg": {
+        "title": "Jetty Avg Response Time",
         "unit": "s",
-        "color": "#d35400",
+        "color": "#145a32",
         "format": "fixed2"
     },
-    "jetty_server_requests_seconds_count{method=\"GET\",outcome=\"SUCCESS\",status=\"200\",}": {
-        "title": "GET Requests",
+    "process_cpu_usage": {
+        "title": "CPU Usage",
+        "unit": "%",
+        "color": "#145a32",
+        "format": "fixed2"
+    },
+    "postgres_locks": {
+        "title": "Postgres Locks",
         "unit": "",
-        "color": "#16a085",
-        "format": "roundFormat"
+        "color": "#145a32",
+        "format": "fixed0"
+    },
+    "jvm_gc_pause_seconds_sum": {
+        "title": "JVM GC Pause (s)",
+        "unit": "s",
+        "color": "#145a32",
+        "format": "fixed2"
+    },
+    "postgres_connections": {
+        "title": "DB Connections",
+        "unit": "",
+        "color": "#145a32",
+        "format": "fixed0"
+    },
+    "jvm_memory_used_bytes": {
+        "title": "JVM Memory Used",
+        "unit": "B",
+        "color": "#145a32",
+        "format": "fixed0"
+    },
+    "system_load1": {
+        "title": "System Load 1m",
+        "unit": "",
+        "color": "#145a32",
+        "format": "fixed2"
+    },
+    "jetty_server_requests_seconds_count": {
+        "title": "Jetty Requests Count",
+        "unit": "",
+        "color": "#145a32",
+        "format": "fixed0"
+    },
+    "postgres_rows_inserted_total": {
+        "title": "Rows Inserted",
+        "unit": "",
+        "color": "#145a32",
+        "format": "fixed0"
     }
 }

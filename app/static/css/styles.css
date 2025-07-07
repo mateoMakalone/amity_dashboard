@@ -65,14 +65,15 @@ body {
 
 .section-title {
     font-size: 1.2rem;
-    font-weight: 500;
-    color: var(--primary);
+    font-weight: bold;
+    color: #111;
     margin-bottom: 1.2rem;
 }
 
-.metric-name {
+.metric-name, .key-metric-name {
     font-size: 0.85rem;
-    color: var(--primary);
+    color: #333;
+    font-weight: 400;
 }
 .metric-value, .response-value, .key-metric-value {
     font-size: 1.3rem;
@@ -121,4 +122,31 @@ body {
     .container {
         padding: 0 4px;
     }
+}
+
+.kpi-section {
+    border-left: 6px solid #800000;
+    background: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(128,0,0,0.07);
+    padding-left: 1rem;
+    margin-bottom: 2rem;
+    transition: border-color 0.3s;
+}
+
+.key-metric-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.metric-history-plot {
+    min-width: 0;
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    margin-top: 0.5rem;
 }

@@ -45,52 +45,64 @@ function toggleSpinner(show) {
     if (spinner) spinner.style.display = show ? 'block' : 'none';
 }
 
-function updateDashboard() {
-    toggleSpinner(true);
-    fetch('/data')
-        .then(r => r.json())
-        .then(data => {
-            toggleSpinner(false);
-            if (!data || typeof data !== 'object' || data.error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = data && data.error ? `Error: ${data.error}` : 'No data received';
-                return;
-            }
-            updateProminentMetrics(data);
-            updateResponseTimes(data);
-            updateMetricsSections(data);
-            document.getElementById('last-updated').textContent =
-                new Date(data.last_updated * 1000).toLocaleString();
-        })
-        .catch(err => {
-            toggleSpinner(false);
-            const errorEl = document.getElementById('error');
-            errorEl.style.display = 'block';
-            errorEl.textContent = `Request failed: ${err.message}`;
-        });
+async function fetchHistory() {
+    const resp = await fetch('/history');
+    return await resp.json();
 }
 
-/**
- * Обновляет ключевые метрики
- * @param {object} data
- */
-function updateProminentMetrics(data) {
+async function updateProminentMetrics(data) {
     const container = document.getElementById('prominent-metrics');
-    container.innerHTML = '';
+    // Не удаляем карточки, только обновляем значения и графики
+    const oldCards = {};
+    container.querySelectorAll('.key-metric-card').forEach(card => {
+        oldCards[card.getAttribute('data-metric')] = card;
+    });
+    let insertAfter = container.querySelector('.section-title');
+    const history = await fetchHistory();
     for (const [metricName, config] of Object.entries(data.prominent)) {
         if (data.metrics[metricName] !== undefined) {
+            let card = oldCards[metricName];
+            const category = getCategoryConfig(getMetricCategory(metricName, data.config), data.config);
+            let shortTitle = config.title || toTitleCase(stripCategoryPrefix(metricName, category));
             const value = data.metrics[metricName];
             const formatType = config.format || "fixed2";
             const formatter = formatFunctions[formatType] || formatFunctions.fixed2;
             const formattedValue = formatter(value);
-            const card = document.createElement('div');
-            card.className = `key-metric-card card`;
-            card.innerHTML = `
-                <div class="key-metric-name">${config.title}</div>
-                <div class="key-metric-value">${formattedValue}${config.unit ? ' ' + config.unit : ''}</div>
-            `;
-            fadeIn(card);
-            container.appendChild(card);
+            if (!card) {
+                card = document.createElement('div');
+                card.className = `key-metric-card card`;
+                card.setAttribute('data-metric', metricName);
+                card.innerHTML = `
+                    <div class=\"key-metric-name metric-name\" title=\"${metricName}\">${shortTitle}</div>
+                    <div class=\"key-metric-value\"></div>
+                    <div class=\"metric-history-plot\" id=\"plot-${metricName}\"></div>
+                `;
+                if (insertAfter && insertAfter.nextSibling) {
+                    container.insertBefore(card, insertAfter.nextSibling);
+                } else {
+                    container.appendChild(card);
+                }
+                insertAfter = card;
+            }
+            // Обновляем только значение
+            const valueDiv = card.querySelector('.key-metric-value');
+            if (valueDiv.textContent !== formattedValue + (config.unit ? ' ' + config.unit : '')) {
+                valueDiv.textContent = formattedValue + (config.unit ? ' ' + config.unit : '');
+                fadeIn(valueDiv);
+            }
+            // Обновляем только данные графика
+            const plotDiv = card.querySelector('.metric-history-plot');
+            if (plotDiv && history[metricName]) {
+                const x = history[metricName].map(([ts, _]) => new Date(ts * 1000));
+                const y = history[metricName].map(([_, v]) => v);
+                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: '#800000'}}], {
+                    margin: {t: 10, b: 30, l: 40, r: 10},
+                    height: 120,
+                    xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
+                    yaxis: {showgrid: true, zeroline: false},
+                    displayModeBar: false
+                }, {displayModeBar: false});
+            }
         }
     }
 }
@@ -130,15 +142,15 @@ function getCategoryConfig(category, config) {
 function stripCategoryPrefix(metricName, categoryConfig) {
     if (!categoryConfig || !categoryConfig.metrics) return metricName;
     for (const pattern of categoryConfig.metrics) {
-        const prefix = pattern.replace(/\W.*$/, '');
-        if (metricName.startsWith(prefix + '_')) {
-            return metricName.slice(prefix.length + 1);
+        const match = pattern.match(/^([a-zA-Z0-9]+)_/);
+        if (match && metricName.startsWith(match[1] + '_')) {
+            return metricName.slice(match[1].length + 1);
         }
     }
     return metricName;
 }
 
-function updateMetricsSections(data) {
+async function updateMetricsSections(data) {
     const container = document.getElementById('metrics-sections');
     const categories = {};
     for (const metricName in data.metrics) {
@@ -155,6 +167,8 @@ function updateMetricsSections(data) {
     container.querySelectorAll('.metrics-section').forEach(sec => {
         oldSections[sec.getAttribute('data-category')] = sec;
     });
+    // Получаем историю для всех метрик
+    const history = await fetchHistory();
     for (const category of orderedCategories) {
         let section = oldSections[category];
         const categoryConfig = getCategoryConfig(category, data.config);
@@ -163,8 +177,18 @@ function updateMetricsSections(data) {
             section = document.createElement('section');
             section.className = 'metrics-section';
             section.setAttribute('data-category', category);
-            section.innerHTML = `<h2 class="section-title">${category}</h2><div class="metrics-grid" id="section-${category}"></div>`;
+            section.innerHTML = `<h2 class=\"section-title\">${category}</h2><div class=\"metrics-grid\" id=\"section-${category}\"></div>`;
             container.appendChild(section);
+        } else {
+            let title = section.querySelector('.section-title');
+            if (!title) {
+                title = document.createElement('h2');
+                title.className = 'section-title';
+                title.textContent = category;
+                section.prepend(title);
+            } else {
+                title.textContent = category;
+            }
         }
         section.style.borderLeft = `6px solid ${color}`;
         const grid = section.querySelector('.metrics-grid');
@@ -180,16 +204,40 @@ function updateMetricsSections(data) {
                 card.className = 'metric-card card';
                 card.setAttribute('data-metric', name);
                 card.innerHTML = `
-                    <div class="metric-name" title="${name}">${toTitleCase(shortName)}</div>
-                    <div class="metric-value"></div>
+                    <div class=\"metric-name\" title=\"${name}\">${toTitleCase(shortName)}</div>
+                    <div class=\"metric-value\"></div>
+                    <div class=\"metric-history-plot\" id=\"plot-${name}\"></div>
                 `;
                 grid.appendChild(card);
+            } else {
+                // Если карточка уже есть, но нет графика — добавить
+                if (!card.querySelector('.metric-history-plot')) {
+                    const plotDiv = document.createElement('div');
+                    plotDiv.className = 'metric-history-plot';
+                    plotDiv.id = `plot-${name}`;
+                    card.appendChild(plotDiv);
+                }
             }
             const valueDiv = card.querySelector('.metric-value');
             const newValue = data.metrics[name].toFixed(2);
             if (valueDiv.textContent !== newValue) {
                 valueDiv.textContent = newValue;
                 fadeIn(valueDiv);
+            }
+            // Только для секции System рисуем график
+            if (category === 'System') {
+                const plotDiv = card.querySelector('.metric-history-plot');
+                if (plotDiv && history[name]) {
+                    const x = history[name].map(([ts, _]) => new Date(ts * 1000));
+                    const y = history[name].map(([_, v]) => v);
+                    Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
+                        margin: {t: 10, b: 30, l: 40, r: 10},
+                        height: 120,
+                        xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
+                        yaxis: {showgrid: true, zeroline: false},
+                        displayModeBar: false
+                    }, {displayModeBar: false});
+                }
             }
         }
     }
@@ -205,6 +253,31 @@ function getMetricCategory(metricName, config) {
         }
     }
     return 'Other';
+}
+
+function updateDashboard() {
+    toggleSpinner(true);
+    fetch('/data')
+        .then(r => r.json())
+        .then(async data => {
+            toggleSpinner(false);
+            if (!data || typeof data !== 'object' || data.error) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = data && data.error ? `Error: ${data.error}` : 'No data received';
+                return;
+            }
+            await updateProminentMetrics(data);
+            updateResponseTimes(data);
+            await updateMetricsSections(data);
+            document.getElementById('last-updated').textContent =
+                new Date(data.last_updated * 1000).toLocaleString();
+        })
+        .catch(err => {
+            toggleSpinner(false);
+            const errorEl = document.getElementById('error');
+            errorEl.style.display = 'block';
+            errorEl.textContent = `Request failed: ${err.message}`;
+        });
 }
 
 setInterval(updateDashboard, UPDATE_INTERVAL);

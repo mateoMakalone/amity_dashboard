@@ -116,10 +116,13 @@ def get_metrics_data():
         # Обновляем history для KPI-метрик
         for k, v in kpi.items():
             metrics_data["history"][k].append((metrics_data["last_updated"], v))
+        # Фильтруем history по should_display_metric
+        from .parser import should_display_metric
+        filtered_history = {name: list(history) for name, history in metrics_data["history"].items() if should_display_metric(name, METRICS_CONFIG)}
         return {
             "metrics": parsed,
             "kpi": kpi,
-            "history": {name: list(history) for name, history in metrics_data["history"].items()},
+            "history": filtered_history,
             "last_updated": metrics_data["last_updated"],
             "error": metrics_data["last_error"]
         }
@@ -132,3 +135,6 @@ def get_metrics_history():
 def start_metrics_thread():
     thread = threading.Thread(target=update_metrics, daemon=True)
     thread.start()
+
+# Очищаем историю при старте, чтобы убрать старые игнорируемые метрики
+metrics_data["history"].clear()

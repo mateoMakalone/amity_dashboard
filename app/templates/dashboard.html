@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Application Metrics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="dashboard-header">
+            <h1 class="dashboard-title">Application Metrics Dashboard</h1>
+        </header>
+        <div id="error" class="alert-error"></div>
+        <section class="key-metrics">
+            <h2 class="section-title">Key Performance Indicators</h2>
+            <div class="key-metrics-grid" id="prominent-metrics"></div>
+        </section>
+        <div class="response-times" id="avg-times"></div>
+        <div id="metrics-sections"></div>
+        <div class="status-bar">
+            Last updated: <span id="last-updated">-</span>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

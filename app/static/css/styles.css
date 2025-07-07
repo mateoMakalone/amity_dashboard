@@ -1,0 +1,20 @@
+body {
+    font-family: sans-serif;
+    background-color: #f8fafc;
+    padding: 20px;
+    color: #333;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+.dashboard-header { text-align: center; margin-bottom: 2rem; }
+.dashboard-title { font-size: 2rem; color: #2c3e50; }
+.alert-error { background: #fee; color: #d33; padding: 1rem; display: none; }
+.key-metrics-grid, .response-times, .metrics-grid {
+    display: grid; gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.key-metric-card, .response-card, .metric-card {
+    background: #fff; border-left: 4px solid #ccc;
+    border-radius: 6px; padding: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.status-bar { text-align: right; font-size: 0.8rem; color: #888; margin-top: 1rem; }

@@ -120,5 +120,17 @@ PROMINENT_METRICS = {
         "unit": "",
         "color": "#145a32",
         "format": "fixed0"
+    },
+    "jetty_post_avg_time": {
+        "title": "POST Avg Response Time",
+        "unit": "s",
+        "color": "#800000",
+        "format": "fixed3"
+    },
+    "jetty_get_avg_time": {
+        "title": "GET Avg Response Time",
+        "unit": "s",
+        "color": "#800000",
+        "format": "fixed3"
     }
 }

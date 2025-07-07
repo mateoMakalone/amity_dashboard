@@ -107,34 +107,6 @@ async function updateProminentMetrics(data) {
     }
 }
 
-/**
- * Обновляет карточки времени отклика
- * @param {object} data
- */
-function updateResponseTimes(data) {
-    const container = document.getElementById('avg-times');
-    container.innerHTML = '';
-    const responses = [
-        { type: 'POST', label: 'Average POST Response Time' },
-        { type: 'GET', label: 'Average GET Response Time' }
-    ];
-    for (const res of responses) {
-        const avgKey = `jetty_${res.type.toLowerCase()}_avg_time`;
-        const countKey = `jetty_server_requests_seconds_count{method="${res.type}",outcome="SUCCESS",status="200",}`;
-        if (data.metrics[avgKey] !== undefined) {
-            const card = document.createElement('div');
-            card.className = 'response-card card';
-            card.innerHTML = `
-                <div class="metric-name">${res.label}</div>
-                <div class="response-value">${data.metrics[avgKey].toFixed(3)} s</div>
-                <div class="metric-name">${formatFunctions.roundFormat(data.metrics[countKey])} requests</div>
-            `;
-            fadeIn(card);
-            container.appendChild(card);
-        }
-    }
-}
-
 function getCategoryConfig(category, config) {
     return config.find(c => c.category === category) || {};
 }
@@ -267,7 +239,6 @@ function updateDashboard() {
                 return;
             }
             await updateProminentMetrics(data);
-            updateResponseTimes(data);
             await updateMetricsSections(data);
             document.getElementById('last-updated').textContent =
                 new Date(data.last_updated * 1000).toLocaleString();

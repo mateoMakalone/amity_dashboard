@@ -1,5 +1,5 @@
 :root {
-    --primary: #2c3e50;
+    --primary: #27ae60;
     --secondary: #3498db;
     --success: #27ae60;
     --danger: #e74c3c;
@@ -35,22 +35,23 @@ body {
     display: none;
 }
 
-.key-metrics-grid,
-.response-times,
-.metrics-grid {
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.card {
+    background: #fff;
+    border-left: 4px solid var(--primary);
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.card:hover {
+    box-shadow: 0 4px 16px rgba(39,174,96,0.15);
+    border-color: #43e97b;
 }
 
 .key-metric-card,
 .response-card,
 .metric-card {
-    background: #fff;
-    border-left: 4px solid var(--gray);
-    border-radius: 6px;
-    padding: 1rem;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    composes: card;
 }
 
 .section-title {
@@ -62,11 +63,12 @@ body {
 
 .metric-name {
     font-size: 0.85rem;
-    color: var(--gray);
+    color: var(--primary);
 }
 .metric-value, .response-value, .key-metric-value {
     font-size: 1.3rem;
     font-weight: bold;
+    color: var(--dark);
 }
 
 .status-bar {
@@ -86,3 +88,28 @@ body {
 .post-time { border-color: var(--danger); }
 
 .status-bar { text-align: right; font-size: 0.8rem; color: #888; margin-top: 1rem; }
+
+.key-metrics-grid,
+.response-times,
+.metrics-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+@media (max-width: 600px) {
+    .key-metrics-grid,
+    .response-times,
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-title {
+        font-size: 1.3rem;
+    }
+    .section-title {
+        font-size: 1rem;
+    }
+    .container {
+        padding: 0 4px;
+    }
+}

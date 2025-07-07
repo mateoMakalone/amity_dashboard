@@ -285,6 +285,7 @@ async function updateMetricsSections(data) {
             oldCards[card.getAttribute('data-metric')] = card;
         });
         for (const name of categories[category]) {
+            if (!data.metrics || typeof data.metrics[name] !== 'number' || isNaN(data.metrics[name])) continue;
             let card = oldCards[name];
             const shortName = stripCategoryPrefix(name, categoryConfig);
             if (!card) {
@@ -299,14 +300,10 @@ async function updateMetricsSections(data) {
                 grid.appendChild(card);
             }
             const valueDiv = card.querySelector('.metric-value');
-            if (typeof data.metrics[name] === 'number' && !isNaN(data.metrics[name])) {
-                const newValue = data.metrics[name].toFixed(2);
-                if (valueDiv.textContent !== newValue) {
-                    valueDiv.textContent = newValue;
-                    fadeIn(valueDiv);
-                }
-            } else {
-                valueDiv.textContent = 'нет данных';
+            const newValue = data.metrics[name].toFixed(2);
+            if (valueDiv.textContent !== newValue) {
+                valueDiv.textContent = newValue;
+                fadeIn(valueDiv);
             }
             // Только для секции System рисуем график, если есть история
             if (category === 'System') {

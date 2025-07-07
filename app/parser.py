@@ -25,7 +25,10 @@ def parse_metrics(text):
     return metrics
 
 def should_display_metric(metric_name, config):
+    from .config import IGNORE_METRICS
     base_name = metric_name.split('{')[0]
+    if base_name in IGNORE_METRICS:
+        return False
     for category in config:
         for pattern in category["metrics"]:
             if re.fullmatch(pattern, base_name):

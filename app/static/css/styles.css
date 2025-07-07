@@ -60,7 +60,7 @@ body {
 .key-metric-card,
 .response-card,
 .metric-card {
-    composes: card;
+    /* composes: card; */
 }
 
 .section-title {

@@ -285,7 +285,6 @@ async function updateMetricsSections(data) {
             oldCards[card.getAttribute('data-metric')] = card;
         });
         for (const name of categories[category]) {
-            if (!data.metrics || data.metrics[name] === undefined || data.metrics[name] === null || isNaN(data.metrics[name])) continue;
             let card = oldCards[name];
             const shortName = stripCategoryPrefix(name, categoryConfig);
             if (!card) {
@@ -293,30 +292,26 @@ async function updateMetricsSections(data) {
                 card.className = 'metric-card card';
                 card.setAttribute('data-metric', name);
                 card.innerHTML = `
-                    <div class=\"metric-name\" title=\"${name}\">${toTitleCase(shortName)}</div>
-                    <div class=\"metric-value\"></div>
-                    <div class=\"metric-history-plot\" id=\"plot-${name}\"></div>
+                    <div class="metric-name" title="${name}">${toTitleCase(shortName)}</div>
+                    <div class="metric-value"></div>
+                    <div class="metric-history-plot" id="plot-${name}"></div>
                 `;
                 grid.appendChild(card);
-            } else {
-                // Если карточка уже есть, но нет графика — добавить
-                if (!card.querySelector('.metric-history-plot')) {
-                    const plotDiv = document.createElement('div');
-                    plotDiv.className = 'metric-history-plot';
-                    plotDiv.id = `plot-${name}`;
-                    card.appendChild(plotDiv);
-                }
             }
             const valueDiv = card.querySelector('.metric-value');
-            const newValue = data.metrics[name].toFixed(2);
-            if (valueDiv.textContent !== newValue) {
-                valueDiv.textContent = newValue;
-                fadeIn(valueDiv);
+            if (typeof data.metrics[name] === 'number' && !isNaN(data.metrics[name])) {
+                const newValue = data.metrics[name].toFixed(2);
+                if (valueDiv.textContent !== newValue) {
+                    valueDiv.textContent = newValue;
+                    fadeIn(valueDiv);
+                }
+            } else {
+                valueDiv.textContent = 'нет данных';
             }
-            // Только для секции System рисуем график
+            // Только для секции System рисуем график, если есть история
             if (category === 'System') {
                 const plotDiv = card.querySelector('.metric-history-plot');
-                if (plotDiv && history && history[name] && Array.isArray(history[name]) && history[name].length > 0) {
+                if (plotDiv && history && Array.isArray(history[name]) && history[name].length > 0) {
                     const x = history[name].map(([ts, _]) => new Date(ts * 1000));
                     const y = history[name].map(([_, v]) => v);
                     Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {

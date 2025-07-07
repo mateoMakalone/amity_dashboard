@@ -4,6 +4,7 @@ import time
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric
 from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, HISTORY_LENGTH, METRICS_CONFIG, PROMINENT_METRICS
+import math
 
 HISTORY_SECONDS = 3600  # 1 час
 HISTORY_POINTS = int(HISTORY_SECONDS / UPDATE_INTERVAL)
@@ -29,8 +30,9 @@ def update_metrics():
             with lock:
                 for name, value in parsed.items():
                     if should_display_metric(name, METRICS_CONFIG):
-                        metrics_data["metrics"][name] = value
-                        metrics_data["history"][name].append((now, value))
+                        if isinstance(value, (int, float)) and not math.isnan(value):
+                            metrics_data["metrics"][name] = value
+                            metrics_data["history"][name].append((now, value))
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
         except Exception as e:

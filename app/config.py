@@ -200,6 +200,7 @@ IGNORE_METRICS = [
     # Для jvm_memory_used_bytes с area=nonheap — фильтровать по лейблу на фронте
     # Jetty
     "jetty_connections_bytes_in_bytes_max",
+    "jetty_connections_bytes_in_bytes_count",
     "jetty_connections_bytes_out_bytes_max",
     "jetty_connections_messages_in_messages_total",
     "jetty_connections_messages_out_messages_total",

@@ -129,8 +129,8 @@ def get_metrics_data():
 
 def get_metrics_history():
     with lock:
-        # Возвращаем историю для всех метрик: {name: [(timestamp, value), ...], ...}
-        return {name: list(history) for name, history in metrics_data["history"].items()}
+        from .parser import should_display_metric
+        return {name: list(history) for name, history in metrics_data["history"].items() if should_display_metric(name, METRICS_CONFIG)}
 
 def start_metrics_thread():
     thread = threading.Thread(target=update_metrics, daemon=True)

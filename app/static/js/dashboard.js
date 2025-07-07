@@ -50,6 +50,84 @@ async function fetchHistory() {
     return await resp.json();
 }
 
+// Словарь "человеческих" названий для base_name
+const humanNames = {
+    "tx_pool_size": "Transaction Pool",
+    "process_cpu_usage": "CPU Usage",
+    "system_cpu_usage": "System CPU Usage",
+    "system_load_average_1m": "Load Average (1m)",
+    "system_cpu_count": "CPU Count",
+    "postgres_locks": "Locks",
+    "postgres_connections": "Connections",
+    "postgres_rows_inserted_total": "Rows Inserted",
+    "postgres_rows_updated_total": "Rows Updated",
+    "postgres_rows_fetched_total": "Rows Fetched",
+    "postgres_rows_deleted_total": "Rows Deleted",
+    "postgres_blocks_reads_total": "Blocks Reads Total",
+    "postgres_buffers_checkpoint_total": "Buffers Checkpoint Total",
+    "postgres_checkpoints_timed_total": "Checkpoints Timed Total",
+    "postgres_checkpoints_requested_total": "Checkpoints Requested Total",
+    "postgres_size": "Database Size",
+    "postgres_transactions_total": "Transactions Total",
+    "postgres_blocks_hits_total": "Blocks Hits Total",
+    "postgres_temp_writes_bytes_total": "Temp Writes Bytes Total",
+    "postgres_buffers_backend_total": "Buffers Backend Total",
+    "postgres_buffers_clean_total": "Buffers Clean Total",
+    "postgres_rows_dead": "Rows Dead",
+    "jvm_memory_used_bytes": "Memory Used Bytes",
+    "jvm_memory_committed_bytes": "Memory Committed Bytes",
+    "jvm_memory_max_bytes": "Memory Max Bytes",
+    "jvm_gc_pause_seconds_sum": "GC Pause Seconds Sum",
+    "jvm_gc_pause_seconds_count": "GC Pause Seconds Count",
+    "jvm_gc_pause_seconds_max": "GC Pause Seconds Max",
+    "jvm_gc_memory_promoted_bytes_total": "GC Memory Promoted Bytes Total",
+    "jvm_gc_memory_allocated_bytes_total": "GC Memory Allocated Bytes Total",
+    "jvm_gc_max_data_size_bytes": "GC Max Data Size Bytes",
+    "jvm_gc_live_data_size_bytes": "GC Live Data Size Bytes",
+    "jvm_threads_live_threads": "Live Threads",
+    "jvm_threads_daemon_threads": "Daemon Threads",
+    "jvm_threads_peak_threads": "Peak Threads",
+    "jvm_threads_started_threads_total": "Threads Started Total",
+    "jvm_threads_states_threads": "Threads States Threads",
+    "jvm_classes_loaded_classes": "Classes Loaded",
+    "jvm_classes_unloaded_classes_total": "Classes Unloaded",
+    "jvm_buffer_count_buffers": "Buffer Count Buffers",
+    "jvm_buffer_memory_used_bytes": "Buffer Memory Used Bytes",
+    "jvm_buffer_total_capacity_bytes": "Buffer Total Capacity Bytes",
+    "jetty_server_requests_seconds_count": "Server Requests Seconds Count",
+    "jetty_server_requests_seconds_sum": "Server Requests Seconds Sum",
+    "jetty_server_requests_seconds_max": "Server Requests Seconds Max",
+    "jetty_connections_current_connections": "Connections Current",
+    "jetty_connections_max_connections": "Connections Max",
+    "jetty_connections_messages_in_messages_total": "Connections Messages In",
+    "jetty_connections_messages_out_messages_total": "Connections Messages Out",
+    "jetty_connections_bytes_in_bytes_count": "Connections Bytes In (Count)",
+    "jetty_connections_bytes_in_bytes_max": "Connections Bytes In (Max)",
+    "jetty_connections_bytes_in_bytes_sum": "Connections Bytes In (Sum)",
+    "jetty_connections_bytes_out_bytes_count": "Connections Bytes Out (Count)",
+    "jetty_connections_bytes_out_bytes_max": "Connections Bytes Out (Max)",
+    "jetty_connections_bytes_out_bytes_sum": "Connections Bytes Out (Sum)",
+    // ... можно расширять ...
+};
+
+function getHumanName(metricName) {
+    const base = metricName.split('{')[0];
+    const labelMatch = metricName.match(/\{(.+)\}/);
+    let labelStr = "";
+    if (labelMatch) {
+        // Преобразуем лейблы в красивый вид
+        labelStr = labelMatch[1]
+            .replace(/"/g, "")
+            .replace(/,/g, ", ")
+            .replace(/=/g, "=")
+            .replace(/_/g, " ")
+            .replace(/([a-z])([A-Z])/g, "$1 $2");
+    }
+    let name = humanNames[base] || toTitleCase(base.replace(/_/g, " "));
+    if (labelStr) name += " (" + labelStr + ")";
+    return name;
+}
+
 async function updateProminentMetrics(data) {
     const container = document.getElementById('prominent-metrics');
     // Не удаляем карточки, только обновляем значения и графики
@@ -63,7 +141,7 @@ async function updateProminentMetrics(data) {
         if (data.metrics[metricName] !== undefined) {
             let card = oldCards[metricName];
             const category = getCategoryConfig(getMetricCategory(metricName, data.config), data.config);
-            let shortTitle = config.title || toTitleCase(stripCategoryPrefix(metricName, category));
+            let shortTitle = config.title || getHumanName(metricName);
             const value = data.metrics[metricName];
             const formatType = config.format || "fixed2";
             const formatter = formatFunctions[formatType] || formatFunctions.fixed2;
@@ -204,7 +282,7 @@ async function updateMetricsSections(data) {
                 card.className = 'metric-card card';
                 card.setAttribute('data-metric', name);
                 card.innerHTML = `
-                    <div class=\"metric-name\" title=\"${name}\">${toTitleCase(shortName)}</div>
+                    <div class=\"metric-name\" title=\"${name}\">${getHumanName(name)}</div>
                     <div class=\"metric-value\"></div>
                     <div class=\"metric-history-plot\" id=\"plot-${name}\"></div>
                 `;

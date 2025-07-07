@@ -347,6 +347,22 @@ function getMetricCategory(metricName, config) {
     return 'Other';
 }
 
+function logJsError(context, err) {
+    let logDiv = document.getElementById('js-error-log');
+    if (!logDiv) {
+        logDiv = document.createElement('div');
+        logDiv.id = 'js-error-log';
+        logDiv.style = 'position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:#fff3f3;color:#c0392b;font-size:13px;padding:8px 16px;border-top:2px solid #e74c3c;z-index:9999;';
+        document.body.appendChild(logDiv);
+    }
+    const msg = `[${new Date().toLocaleTimeString()}] JS ERROR in ${context}: ${err && err.stack ? err.stack : err}`;
+    const p = document.createElement('div');
+    p.textContent = msg;
+    logDiv.appendChild(p);
+    // Оставляем только последние 20 ошибок
+    while (logDiv.children.length > 20) logDiv.removeChild(logDiv.firstChild);
+}
+
 function updateDashboard() {
     toggleSpinner(true);
     fetch('/data')
@@ -365,6 +381,7 @@ function updateDashboard() {
                     const errorEl = document.getElementById('error');
                     errorEl.style.display = 'block';
                     errorEl.textContent = `KPI error: ${err.message}`;
+                    logJsError('updateProminentMetrics', err);
                 }
                 try {
                     await updateMetricsSections(data);
@@ -372,6 +389,7 @@ function updateDashboard() {
                     const errorEl = document.getElementById('error');
                     errorEl.style.display = 'block';
                     errorEl.textContent = `Section error: ${err.message}`;
+                    logJsError('updateMetricsSections', err);
                 }
                 document.getElementById('last-updated').textContent =
                     new Date(data.last_updated * 1000).toLocaleString();
@@ -380,6 +398,7 @@ function updateDashboard() {
                 const errorEl = document.getElementById('error');
                 errorEl.style.display = 'block';
                 errorEl.textContent = `Request failed: ${err.message}`;
+                logJsError('updateDashboard', err);
             }
         })
         .catch(err => {
@@ -387,6 +406,7 @@ function updateDashboard() {
             const errorEl = document.getElementById('error');
             errorEl.style.display = 'block';
             errorEl.textContent = `Request failed: ${err.message}`;
+            logJsError('fetch/data', err);
         });
 }
 

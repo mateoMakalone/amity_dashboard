@@ -241,6 +241,8 @@ async function updateMetricsSections(data) {
     for (const metricName in data.metrics) {
         if (data.prominent[metricName] || metricName.includes('_avg_time')) continue;
         if (isIgnoredMetric(metricName, data.config)) continue;
+        // Фильтрация: только определённые и числовые метрики
+        if (typeof data.metrics[metricName] !== 'number' || isNaN(data.metrics[metricName])) continue;
         const category = getMetricCategory(metricName, data.config);
         if (!categories[category]) categories[category] = [];
         categories[category].push(metricName);

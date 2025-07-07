@@ -120,14 +120,15 @@ async function updateProminentMetrics(data) {
             const formattedValue = formatter(value);
             // Цветовая индикация
             let state = 'ok';
+            const colorMap = { ok: '#229954', warning: '#f4d03f', critical: '#e74c3c', default: '#bbb' };
             const hasThresholds = typeof config.warning === 'number' || typeof config.critical === 'number';
             let cardStyle = '';
+            let plotColor = colorMap.default;
             if (hasThresholds) {
                 if (typeof config.critical === 'number' && value >= config.critical) state = 'critical';
                 else if (typeof config.warning === 'number' && value >= config.warning) state = 'warning';
-                // Цвета
-                const colorMap = { ok: '#229954', warning: '#f4d03f', critical: '#e74c3c' };
                 cardStyle = `border-left: 6px solid ${colorMap[state]}; box-shadow: 0 2px 8px rgba(0,0,0,0.04);`;
+                plotColor = colorMap[state];
             }
             // Tooltip
             let tooltip = `<b>${shortTitle}</b><br/>`;
@@ -183,7 +184,7 @@ async function updateProminentMetrics(data) {
             if (plotDiv && history[metricName]) {
                 const x = history[metricName].map(([ts, _]) => new Date(ts * 1000));
                 const y = history[metricName].map(([_, v]) => v);
-                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: colorMap[state]}}], {
+                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: plotColor}}], {
                     margin: {t: 10, b: 30, l: 40, r: 10},
                     height: 120,
                     xaxis: {showgrid: false, tickformat: '%H:%M:%S'},

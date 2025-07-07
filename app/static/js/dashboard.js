@@ -112,6 +112,7 @@ async function updateProminentMetrics(data) {
         .filter(([metricName, config]) => kpiData[metricName] !== undefined)
         .sort((a, b) => (b[1].priority || 0) - (a[1].priority || 0));
     for (const [metricName, config] of sortedProminent) {
+        if (!kpiData || kpiData[metricName] === undefined || kpiData[metricName] === null || isNaN(kpiData[metricName])) continue;
         const value = kpiData[metricName];
         if (value === undefined) continue;
         let card = oldCards[metricName];
@@ -284,6 +285,7 @@ async function updateMetricsSections(data) {
             oldCards[card.getAttribute('data-metric')] = card;
         });
         for (const name of categories[category]) {
+            if (!data.metrics || data.metrics[name] === undefined || data.metrics[name] === null || isNaN(data.metrics[name])) continue;
             let card = oldCards[name];
             const shortName = stripCategoryPrefix(name, categoryConfig);
             if (!card) {
@@ -306,13 +308,10 @@ async function updateMetricsSections(data) {
                 }
             }
             const valueDiv = card.querySelector('.metric-value');
-            // Безопасно обновляем только если метрика есть
-            if (data.metrics[name] !== undefined) {
-                const newValue = data.metrics[name].toFixed(2);
-                if (valueDiv.textContent !== newValue) {
-                    valueDiv.textContent = newValue;
-                    fadeIn(valueDiv);
-                }
+            const newValue = data.metrics[name].toFixed(2);
+            if (valueDiv.textContent !== newValue) {
+                valueDiv.textContent = newValue;
+                fadeIn(valueDiv);
             }
             // Только для секции System рисуем график
             if (category === 'System') {

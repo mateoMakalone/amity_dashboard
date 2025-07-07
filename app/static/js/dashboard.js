@@ -298,10 +298,13 @@ async function updateMetricsSections(data) {
                 }
             }
             const valueDiv = card.querySelector('.metric-value');
-            const newValue = data.metrics[name].toFixed(2);
-            if (valueDiv.textContent !== newValue) {
-                valueDiv.textContent = newValue;
-                fadeIn(valueDiv);
+            // Безопасно обновляем только если метрика есть
+            if (data.metrics[name] !== undefined) {
+                const newValue = data.metrics[name].toFixed(2);
+                if (valueDiv.textContent !== newValue) {
+                    valueDiv.textContent = newValue;
+                    fadeIn(valueDiv);
+                }
             }
             // Только для секции System рисуем график
             if (category === 'System') {

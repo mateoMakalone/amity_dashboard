@@ -309,7 +309,7 @@ async function updateMetricsSections(data) {
             // Только для секции System рисуем график
             if (category === 'System') {
                 const plotDiv = card.querySelector('.metric-history-plot');
-                if (plotDiv && history[name]) {
+                if (plotDiv && Array.isArray(history[name]) && history[name].length > 0) {
                     const x = history[name].map(([ts, _]) => new Date(ts * 1000));
                     const y = history[name].map(([_, v]) => v);
                     Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {

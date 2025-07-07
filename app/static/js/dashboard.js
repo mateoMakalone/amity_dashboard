@@ -131,13 +131,21 @@ async function updateProminentMetrics(data) {
         let plotColor = colorMap.default;
         // Для jvm_memory_used_bytes{area="heap",id="Tenured Gen"} подсветка только если есть max и пороги
         let hasThresholds = typeof config.warning === 'number' || typeof config.critical === 'number';
+        let warning = config.warning;
+        let critical = config.critical;
         if (metricName === 'jvm_memory_used_bytes{area="heap",id="Tenured Gen"}') {
             const max = kpiData['jvm_memory_used_bytes{area="heap",id="Tenured Gen"}_max'];
-            if (!max) hasThresholds = false;
+            if (max) {
+                warning = 0.75 * max;
+                critical = 0.9 * max;
+                hasThresholds = true;
+            } else {
+                hasThresholds = false;
+            }
         }
         if (hasThresholds) {
-            if (typeof config.critical === 'number' && value >= config.critical) state = 'critical';
-            else if (typeof config.warning === 'number' && value >= config.warning) state = 'warning';
+            if (typeof critical === 'number' && value >= critical) state = 'critical';
+            else if (typeof warning === 'number' && value >= warning) state = 'warning';
             cardStyle = `border-left: 6px solid ${colorMap[state]}; box-shadow: 0 2px 8px rgba(0,0,0,0.04);`;
             plotColor = colorMap[state];
         }

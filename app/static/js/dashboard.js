@@ -201,7 +201,11 @@ async function updateProminentMetrics(data) {
         card.style = cardStyle;
         // Обновляем только данные графика
         const plotDiv = card.querySelector('.metric-history-plot');
-        if (plotDiv && history && history[metricName] && Array.isArray(history[metricName]) && history[metricName].length > 0) {
+        if (!(plotDiv && history && history[metricName] && Array.isArray(history[metricName]) && history[metricName].length > 0)) {
+            if (!history || !Array.isArray(history[metricName]) || history[metricName].length === 0) {
+                console.warn('Нет истории для KPI-метрики:', metricName, history ? history[metricName] : undefined);
+            }
+        } else {
             const x = history[metricName].map(([ts, _]) => new Date(ts * 1000));
             const y = history[metricName].map(([_, v]) => v);
             Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: plotColor}}], {
@@ -285,7 +289,10 @@ async function updateMetricsSections(data) {
             oldCards[card.getAttribute('data-metric')] = card;
         });
         for (const name of categories[category]) {
-            if (!data.metrics || typeof data.metrics[name] !== 'number' || isNaN(data.metrics[name])) continue;
+            if (!data.metrics || typeof data.metrics[name] !== 'number' || isNaN(data.metrics[name])) {
+                console.warn('Нет метрики или не число:', name, data.metrics ? data.metrics[name] : undefined);
+                continue;
+            }
             let card = oldCards[name];
             const shortName = stripCategoryPrefix(name, categoryConfig);
             if (!card) {
@@ -308,17 +315,21 @@ async function updateMetricsSections(data) {
             // Только для секции System рисуем график, если есть история
             if (category === 'System') {
                 const plotDiv = card.querySelector('.metric-history-plot');
-                if (plotDiv && history && Array.isArray(history[name]) && history[name].length > 0) {
-                    const x = history[name].map(([ts, _]) => new Date(ts * 1000));
-                    const y = history[name].map(([_, v]) => v);
-                    Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
-                        margin: {t: 10, b: 30, l: 40, r: 10},
-                        height: 120,
-                        xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
-                        yaxis: {showgrid: true, zeroline: false},
-                        displayModeBar: false
-                    }, {displayModeBar: false});
+                if (!(plotDiv && history && Array.isArray(history[name]) && history[name].length > 0)) {
+                    if (!history || !Array.isArray(history[name]) || history[name].length === 0) {
+                        console.warn('Нет истории для метрики:', name, history ? history[name] : undefined);
+                    }
+                    continue;
                 }
+                const x = history[name].map(([ts, _]) => new Date(ts * 1000));
+                const y = history[name].map(([_, v]) => v);
+                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
+                    margin: {t: 10, b: 30, l: 40, r: 10},
+                    height: 120,
+                    xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
+                    yaxis: {showgrid: true, zeroline: false},
+                    displayModeBar: false
+                }, {displayModeBar: false});
             }
         }
     }
@@ -354,7 +365,6 @@ function updateDashboard() {
                     const errorEl = document.getElementById('error');
                     errorEl.style.display = 'block';
                     errorEl.textContent = `KPI error: ${err.message}`;
-                    console.error('KPI error:', err);
                 }
                 try {
                     await updateMetricsSections(data);
@@ -362,7 +372,6 @@ function updateDashboard() {
                     const errorEl = document.getElementById('error');
                     errorEl.style.display = 'block';
                     errorEl.textContent = `Section error: ${err.message}`;
-                    console.error('Section error:', err);
                 }
                 document.getElementById('last-updated').textContent =
                     new Date(data.last_updated * 1000).toLocaleString();
@@ -371,7 +380,6 @@ function updateDashboard() {
                 const errorEl = document.getElementById('error');
                 errorEl.style.display = 'block';
                 errorEl.textContent = `Request failed: ${err.message}`;
-                console.error('Dashboard update error:', err);
             }
         })
         .catch(err => {

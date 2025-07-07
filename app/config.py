@@ -206,5 +206,7 @@ IGNORE_METRICS = [
     "jetty_server_dispatches_open_seconds_max",
     "jetty_server_async_waits_operations",
     "jetty_server_async_dispatches_total",
-    "jetty_server_async_expires_total"
+    "jetty_server_async_expires_total",
+    # Новое игнорируемое
+    "jetty_connections_bytes_in_bytes_count"
 ]

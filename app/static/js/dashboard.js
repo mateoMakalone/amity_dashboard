@@ -322,6 +322,12 @@ async function updateMetricsSections(data) {
                         console.warn('Нет истории для метрики (или не массив):', name, history ? history[name] : undefined);
                         continue;
                     }
+                    // Дополнительная проверка на корректность содержимого
+                    const safe = history[name].every(item => Array.isArray(item) && typeof item[1] === 'number' && !isNaN(item[1]));
+                    if (!safe) {
+                        console.warn('Некорректные значения в истории метрики:', name, history[name]);
+                        continue;
+                    }
                     try {
                         const x = history[name].map(([ts, _]) => new Date(ts * 1000));
                         const y = history[name].map(([_, v]) => v);

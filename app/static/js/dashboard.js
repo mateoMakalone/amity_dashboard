@@ -105,8 +105,11 @@ async function updateProminentMetrics(data) {
     });
     let insertAfter = container.querySelector('.section-title');
     const history = await fetchHistory();
-    for (const [metricName, config] of Object.entries(data.prominent)) {
-        if (isIgnoredMetric(metricName, data.config)) continue;
+    // Сортируем KPI по приоритету (desc)
+    const sortedProminent = Object.entries(data.prominent)
+        .filter(([metricName, config]) => !isIgnoredMetric(metricName, data.config))
+        .sort((a, b) => (b[1].priority || 0) - (a[1].priority || 0));
+    for (const [metricName, config] of sortedProminent) {
         if (data.metrics[metricName] !== undefined) {
             let card = oldCards[metricName];
             const category = getCategoryConfig(getMetricCategory(metricName, data.config), data.config);
@@ -115,15 +118,52 @@ async function updateProminentMetrics(data) {
             const formatType = config.format || "fixed2";
             const formatter = formatFunctions[formatType] || formatFunctions.fixed2;
             const formattedValue = formatter(value);
+            // Цветовая индикация
+            let state = 'ok';
+            const hasThresholds = typeof config.warning === 'number' || typeof config.critical === 'number';
+            let cardStyle = '';
+            if (hasThresholds) {
+                if (typeof config.critical === 'number' && value >= config.critical) state = 'critical';
+                else if (typeof config.warning === 'number' && value >= config.warning) state = 'warning';
+                // Цвета
+                const colorMap = { ok: '#229954', warning: '#f4d03f', critical: '#e74c3c' };
+                cardStyle = `border-left: 6px solid ${colorMap[state]}; box-shadow: 0 2px 8px rgba(0,0,0,0.04);`;
+            }
+            // Tooltip
+            let tooltip = `<b>${shortTitle}</b><br/>`;
+            if (config.description) tooltip += `${config.description}<br/>`;
+            if (config.why) tooltip += `<i>${config.why}</i><br/>`;
+            if (typeof config.warning === 'number') tooltip += `Warning: ${config.warning}<br/>`;
+            if (typeof config.critical === 'number') tooltip += `Critical: ${config.critical}`;
             if (!card) {
                 card = document.createElement('div');
                 card.className = `key-metric-card card`;
                 card.setAttribute('data-metric', metricName);
+                card.setAttribute('title', ''); // для кастомного тултипа
                 card.innerHTML = `
-                    <div class=\"key-metric-name metric-name\" title=\"${metricName}\">${shortTitle}</div>
+                    <div class=\"key-metric-name metric-name\" title=\"${shortTitle}\">${shortTitle}</div>
                     <div class=\"key-metric-value\"></div>
                     <div class=\"metric-history-plot\" id=\"plot-${metricName}\"></div>
+                    <div class=\"kpi-tooltip\" style=\"display:none;position:absolute;z-index:10;background:#fff;border:1px solid #bbb;padding:8px 12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08);font-size:0.95em;max-width:320px;\"></div>
                 `;
+                card.style = cardStyle;
+                // Tooltip events
+                card.addEventListener('mouseenter', function(e) {
+                    const tip = card.querySelector('.kpi-tooltip');
+                    tip.innerHTML = tooltip;
+                    tip.style.display = 'block';
+                    tip.style.left = (e.offsetX + 20) + 'px';
+                    tip.style.top = (e.offsetY + 10) + 'px';
+                });
+                card.addEventListener('mousemove', function(e) {
+                    const tip = card.querySelector('.kpi-tooltip');
+                    tip.style.left = (e.offsetX + 20) + 'px';
+                    tip.style.top = (e.offsetY + 10) + 'px';
+                });
+                card.addEventListener('mouseleave', function() {
+                    const tip = card.querySelector('.kpi-tooltip');
+                    tip.style.display = 'none';
+                });
                 if (insertAfter && insertAfter.nextSibling) {
                     container.insertBefore(card, insertAfter.nextSibling);
                 } else {
@@ -131,18 +171,19 @@ async function updateProminentMetrics(data) {
                 }
                 insertAfter = card;
             }
-            // Обновляем только значение
+            // Обновляем только значение и стиль
             const valueDiv = card.querySelector('.key-metric-value');
             if (valueDiv.textContent !== formattedValue + (config.unit ? ' ' + config.unit : '')) {
                 valueDiv.textContent = formattedValue + (config.unit ? ' ' + config.unit : '');
                 fadeIn(valueDiv);
             }
+            card.style = cardStyle;
             // Обновляем только данные графика
             const plotDiv = card.querySelector('.metric-history-plot');
             if (plotDiv && history[metricName]) {
                 const x = history[metricName].map(([ts, _]) => new Date(ts * 1000));
                 const y = history[metricName].map(([_, v]) => v);
-                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: '#800000'}}], {
+                Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: colorMap[state]}}], {
                     margin: {t: 10, b: 30, l: 40, r: 10},
                     height: 120,
                     xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
@@ -180,10 +221,16 @@ async function updateMetricsSections(data) {
         if (!categories[category]) categories[category] = [];
         categories[category].push(metricName);
     }
-    const orderedCategories = data.config
+    // Секции: System всегда после KPI, остальные — по приоритету
+    const systemCategory = data.config.find(c => c.category === 'System');
+    const otherCategories = data.config
+        .filter(c => c.category !== 'System')
         .sort((a, b) => a.priority - b.priority)
         .map(c => c.category)
         .filter(c => categories[c]);
+    const orderedCategories = [];
+    if (systemCategory && categories['System']) orderedCategories.push('System');
+    orderedCategories.push(...otherCategories);
     const oldSections = {};
     container.querySelectorAll('.metrics-section').forEach(sec => {
         oldSections[sec.getAttribute('data-category')] = sec;

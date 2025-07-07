@@ -318,21 +318,24 @@ async function updateMetricsSections(data) {
                 // Только для секции System рисуем график, если есть история
                 if (category === 'System') {
                     const plotDiv = card.querySelector('.metric-history-plot');
-                    if (!(plotDiv && history && Array.isArray(history[name]) && history[name].length > 0)) {
-                        if (!history || !Array.isArray(history[name]) || history[name].length === 0) {
-                            console.warn('Нет истории для метрики:', name, history ? history[name] : undefined);
-                        }
+                    if (!history || !Array.isArray(history[name]) || history[name].length === 0) {
+                        console.warn('Нет истории для метрики (или не массив):', name, history ? history[name] : undefined);
                         continue;
                     }
-                    const x = history[name].map(([ts, _]) => new Date(ts * 1000));
-                    const y = history[name].map(([_, v]) => v);
-                    Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
-                        margin: {t: 10, b: 30, l: 40, r: 10},
-                        height: 120,
-                        xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
-                        yaxis: {showgrid: true, zeroline: false},
-                        displayModeBar: false
-                    }, {displayModeBar: false});
+                    try {
+                        const x = history[name].map(([ts, _]) => new Date(ts * 1000));
+                        const y = history[name].map(([_, v]) => v);
+                        Plotly.react(plotDiv, [{x, y, type: 'scatter', mode: 'lines', line: {color: color}}], {
+                            margin: {t: 10, b: 30, l: 40, r: 10},
+                            height: 120,
+                            xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
+                            yaxis: {showgrid: true, zeroline: false},
+                            displayModeBar: false
+                        }, {displayModeBar: false});
+                    } catch (err) {
+                        console.error('Ошибка построения графика для', name, 'history:', history[name], err);
+                        logJsError(`plot-${name} (${category})`, err);
+                    }
                 }
             } catch (err) {
                 logJsError(`updateMetricsSections: ${name} (${category})`, err);
@@ -367,6 +370,14 @@ function logJsError(context, err) {
     logDiv.appendChild(p);
     // Оставляем только последние 20 ошибок
     while (logDiv.children.length > 20) logDiv.removeChild(logDiv.firstChild);
+    // Отправляем ошибку на backend
+    try {
+        fetch('/log_js_error', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({context, error: err && err.stack ? err.stack : String(err)})
+        });
+    } catch (e) {}
 }
 
 function updateDashboard() {

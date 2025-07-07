@@ -114,7 +114,7 @@ async function updateProminentMetrics(data) {
     for (const [metricName, config] of sortedProminent) {
         if (!kpiData || kpiData[metricName] === undefined || kpiData[metricName] === null || isNaN(kpiData[metricName])) continue;
         const value = kpiData[metricName];
-        if (value === undefined) continue;
+        if (value === undefined || typeof value !== 'number' || isNaN(value)) continue;
         let card = oldCards[metricName];
         let shortTitle = config.title || metricName;
         const formatType = config.format || "fixed2";

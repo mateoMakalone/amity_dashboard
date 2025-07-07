@@ -179,6 +179,14 @@ PROMINENT_METRICS = {
         "format": "fixed0",
         "priority": 1,
         "description": "Кол-во загруженных классов. Рост → потенциальная утечка classloader’ов."
+    },
+    "jetty_connections_bytes_in_bytes_count{connector_name=\"unnamed\",}": {
+        "title": "Jetty Bytes In Count",
+        "unit": "",
+        "color": "#16a085",
+        "format": "fixed0",
+        "priority": 1,
+        "description": "Jetty: количество входящих байт (connector_name=unnamed)."
     }
 }
 

@@ -123,13 +123,23 @@ function updateResponseTimes(data) {
     }
 }
 
-/**
- * Обновляет секции метрик
- * @param {object} data
- */
+function getCategoryConfig(category, config) {
+    return config.find(c => c.category === category) || {};
+}
+
+function stripCategoryPrefix(metricName, categoryConfig) {
+    if (!categoryConfig || !categoryConfig.metrics) return metricName;
+    for (const pattern of categoryConfig.metrics) {
+        const prefix = pattern.replace(/\W.*$/, '');
+        if (metricName.startsWith(prefix + '_')) {
+            return metricName.slice(prefix.length + 1);
+        }
+    }
+    return metricName;
+}
+
 function updateMetricsSections(data) {
     const container = document.getElementById('metrics-sections');
-    container.innerHTML = '';
     const categories = {};
     for (const metricName in data.metrics) {
         if (data.prominent[metricName] || metricName.includes('_avg_time')) continue;
@@ -141,22 +151,47 @@ function updateMetricsSections(data) {
         .sort((a, b) => a.priority - b.priority)
         .map(c => c.category)
         .filter(c => categories[c]);
+    const oldSections = {};
+    container.querySelectorAll('.metrics-section').forEach(sec => {
+        oldSections[sec.getAttribute('data-category')] = sec;
+    });
     for (const category of orderedCategories) {
-        const section = document.createElement('section');
-        section.className = 'metrics-section';
-        section.innerHTML = `<h2 class="section-title">${category}</h2><div class="metrics-grid" id="section-${category}"></div>`;
-        const grid = section.querySelector('.metrics-grid');
-        for (const name of categories[category]) {
-            const card = document.createElement('div');
-            card.className = 'metric-card card';
-            card.innerHTML = `
-                <div class="metric-name" title="${name}">${toTitleCase(name)}</div>
-                <div class="metric-value">${data.metrics[name].toFixed(2)}</div>
-            `;
-            fadeIn(card);
-            grid.appendChild(card);
+        let section = oldSections[category];
+        const categoryConfig = getCategoryConfig(category, data.config);
+        const color = categoryConfig.color || '#eee';
+        if (!section) {
+            section = document.createElement('section');
+            section.className = 'metrics-section';
+            section.setAttribute('data-category', category);
+            section.innerHTML = `<h2 class="section-title">${category}</h2><div class="metrics-grid" id="section-${category}"></div>`;
+            container.appendChild(section);
         }
-        container.appendChild(section);
+        section.style.borderLeft = `6px solid ${color}`;
+        const grid = section.querySelector('.metrics-grid');
+        const oldCards = {};
+        grid.querySelectorAll('.metric-card').forEach(card => {
+            oldCards[card.getAttribute('data-metric')] = card;
+        });
+        for (const name of categories[category]) {
+            let card = oldCards[name];
+            const shortName = stripCategoryPrefix(name, categoryConfig);
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'metric-card card';
+                card.setAttribute('data-metric', name);
+                card.innerHTML = `
+                    <div class="metric-name" title="${name}">${toTitleCase(shortName)}</div>
+                    <div class="metric-value"></div>
+                `;
+                grid.appendChild(card);
+            }
+            const valueDiv = card.querySelector('.metric-value');
+            const newValue = data.metrics[name].toFixed(2);
+            if (valueDiv.textContent !== newValue) {
+                valueDiv.textContent = newValue;
+                fadeIn(valueDiv);
+            }
+        }
     }
 }
 

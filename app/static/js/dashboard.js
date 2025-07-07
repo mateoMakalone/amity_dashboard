@@ -250,12 +250,11 @@ async function updateMetricsSections(data) {
     // Секции: System всегда после KPI, остальные — по приоритету
     const systemCategory = data.config.find(c => c.category === 'System');
     const otherCategories = data.config
-        .filter(c => c.category !== 'System')
+        .filter(c => Array.isArray(categories[c.category]) && categories[c.category].length > 0)
         .sort((a, b) => a.priority - b.priority)
-        .map(c => c.category)
-        .filter(c => categories[c]);
+        .map(c => c.category);
     const orderedCategories = [];
-    if (systemCategory && categories['System']) orderedCategories.push('System');
+    if (systemCategory && Array.isArray(categories['System']) && categories['System'].length > 0) orderedCategories.push('System');
     orderedCategories.push(...otherCategories);
     const oldSections = {};
     container.querySelectorAll('.metrics-section').forEach(sec => {
@@ -264,6 +263,7 @@ async function updateMetricsSections(data) {
     // Получаем историю для всех метрик
     const history = await fetchHistory();
     for (const category of orderedCategories) {
+        if (!Array.isArray(categories[category]) || categories[category].length === 0) continue;
         let section = oldSections[category];
         const categoryConfig = getCategoryConfig(category, data.config);
         const color = categoryConfig.color || '#eee';

@@ -1,0 +1,201 @@
+:root {
+    --primary: #27ae60;
+    --secondary: #3498db;
+    --success: #27ae60;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --info: #16a085;
+    --light: #ecf0f1;
+    --dark: #34495e;
+    --gray: #95a5a6;
+    --white: #ffffff;
+}
+
+body {
+    font-family: sans-serif;
+    background-color: #f8fafc;
+    padding: 20px;
+    color: #333;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+.dashboard-title {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.alert-error {
+    background: #fee;
+    color: #d33;
+    padding: 1rem;
+    display: none;
+}
+
+.metrics-section {
+    margin-bottom: 2rem;
+    border-left: 6px solid #eee;
+    padding-left: 1rem;
+    background: #fafbfc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: border-color 0.3s;
+}
+
+.card {
+    background: #fff;
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+.card:hover {
+    box-shadow: 0 4px 16px rgba(39,174,96,0.15);
+    border-color: #43e97b;
+}
+
+.key-metric-card,
+.response-card,
+.metric-card {
+    composes: card;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #111;
+    margin-bottom: 1.2rem;
+}
+
+.metric-name, .key-metric-name {
+    font-size: 0.85rem;
+    color: #333;
+    font-weight: 400;
+}
+.metric-value, .response-value, .key-metric-value {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--dark);
+}
+
+.status-bar {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 1rem;
+}
+
+/* Цвета по категориям */
+.transactions { border-color: var(--primary); }
+.postgresql { border-color: var(--secondary); }
+.jvm { border-color: var(--success); }
+.jetty { border-color: var(--danger); }
+.system { border-color: var(--warning); }
+.get-time { border-color: var(--info); }
+.post-time { border-color: var(--danger); }
+
+.status-bar { text-align: right; font-size: 0.8rem; color: #888; margin-top: 1rem; }
+
+.key-metrics-grid,
+.response-times,
+.metrics-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+@media (max-width: 600px) {
+    .key-metrics-grid,
+    .response-times,
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-title {
+        font-size: 1.3rem;
+    }
+    .section-title {
+        font-size: 1rem;
+    }
+    .container {
+        padding: 0 4px;
+    }
+}
+
+.kpi-section {
+    border-left: 6px solid #800000;
+    background: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(128,0,0,0.07);
+    padding-left: 1rem;
+    margin-bottom: 2rem;
+    transition: border-color 0.3s;
+}
+
+.key-metric-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.metric-history-plot {
+    min-width: 0;
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.kpi-green {
+    border: 2px solid #27ae60 !important;
+    background: #eafaf1 !important;
+}
+.kpi-yellow {
+    border: 2px solid #f1c40f !important;
+    background: #fef9e7 !important;
+}
+.kpi-red {
+    border: 2px solid #e74c3c !important;
+    background: #fdecea !important;
+}
+
+.info-icon {
+    display: inline-block;
+    font-size: 13px;
+    color: #888;
+    margin-left: 0.3em;
+    cursor: pointer;
+    vertical-align: middle;
+    border-radius: 50%;
+    width: 1.1em;
+    height: 1.1em;
+    text-align: center;
+    line-height: 1.1em;
+    background: #f4f4f4;
+    border: 1px solid #ccc;
+    transition: background 0.2s, color 0.2s;
+}
+.info-icon:hover, .info-icon:focus {
+    color: #222;
+    background: #e0e0e0;
+    outline: none;
+}
+.custom-tooltip {
+    position: fixed;
+    z-index: 9999;
+    max-width: 260px;
+    background: #222;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    white-space: pre-line;
+    pointer-events: none;
+    opacity: 0.97;
+}

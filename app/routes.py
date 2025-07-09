@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, jsonify
-from .metrics import get_metrics_data, get_metrics_history, start_metrics_thread
-from .config import METRICS_CONFIG, PROMINENT_METRICS
+from .metrics import get_metrics_data, get_metrics_history
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -15,5 +14,3 @@ def data():
 @dashboard_bp.route("/history")
 def history():
     return jsonify(get_metrics_history())
-
-start_metrics_thread()

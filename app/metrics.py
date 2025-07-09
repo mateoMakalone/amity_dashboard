@@ -146,43 +146,28 @@ def prepare_metrics_data():
         return metrics
 
 def update_metrics():
-    """
-    Обновляет метрики в зависимости от режима (debug/prod)
-    """
+    print("[DEBUG] update_metrics: поток сбора метрик стартовал")
     while True:
         try:
             start_time = time.time()
-            
-            if DEBUG_MODE:
-                # Debug режим: читаем из mock_metrics.txt
-                try:
-                    with open("mock_metrics.txt", "r", encoding="utf-8") as f:
-                        raw = f.read()
-                    parsed = parse_metrics(raw)
-                except Exception as e:
-                    print(f"[ERROR] Failed to read mock_metrics.txt: {e}")
-                    parsed = {}
-            else:
-                # Prod режим: запрашиваем с сервера
-                response = requests.get(METRICS_URL, timeout=REQUEST_TIMEOUT)
-                parsed = parse_metrics(response.text)
-
+            print(f"[DEBUG] update_metrics: запрос к {METRICS_URL}")
+            response = requests.get(METRICS_URL, timeout=REQUEST_TIMEOUT)
+            print(f"[DEBUG] update_metrics: получен ответ, длина={len(response.text)}")
+            parsed = parse_metrics(response.text)
+            print(f"[DEBUG] update_metrics: распарсено {len(parsed)} метрик")
             now = time.time()
             with lock:
-                # Обновляем метрики
                 for name, value in parsed.items():
                     if should_display_metric(name, METRICS_CONFIG):
                         metrics_data["metrics"][name] = value
                         metrics_data["history"][name].append((now, value))
-                
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
-                
+                print(f"[DEBUG] update_metrics: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")
         except Exception as e:
             with lock:
                 metrics_data["last_error"] = str(e)
                 print(f"[ERROR] Metrics update failed: {e}")
-        
         time.sleep(max(0, UPDATE_INTERVAL - (time.time() - start_time)))
 
 def get_all_metric_names():
@@ -198,79 +183,23 @@ def get_all_metric_names():
     return names
 
 def get_metrics_data():
-    """
-    Возвращает подготовленные данные метрик
-    """
-    if DEBUG_MODE:
-        metrics, now = load_mock_metrics()
-        # Инициализация всех метрик и history
-        for name in INITIAL_METRICS:
-            if name not in metrics:
-                metrics[name] = 0.0
-        # Вычисляем формулы для prominent метрик
-        for name, config in PROMINENT_METRICS.items():
-            if "formula" in config:
-                try:
-                    value = eval_formula(config["formula"], metrics)
-                    metrics[name] = value
-                except Exception as e:
-                    print(f"[ERROR] Failed to compute formula for {name}: {e}")
-                    metrics[name] = 0.0
-        # Специальные метрики с лейблами (пример)
-        db_conn = filter_metric(metrics, 'postgres_connections', {"database": "db01"})
-        if db_conn is not None:
-            metrics['postgres_connections{database="db01"}'] = db_conn
-        db_locks = filter_metric(metrics, 'postgres_locks', {"database": "db01"})
-        if db_locks is not None:
-            metrics['postgres_locks{database="db01"}'] = db_locks
-        heap_mem = filter_metric(metrics, 'jvm_memory_used_bytes', {"area": "heap", "id": "Tenured Gen"})
-        if heap_mem is not None:
-            metrics['jvm_memory_used_bytes{area="heap",id="Tenured Gen"}'] = heap_mem
-        tx_total = filter_metric(metrics, 'postgres_transactions_total', {"database": "db01"})
-        if tx_total is not None:
-            metrics['postgres_transactions_total{database="db01"}'] = tx_total
-        rows_updated = filter_metric(metrics, 'postgres_rows_updated_total', {"database": "db01"})
-        if rows_updated is not None:
-            metrics['postgres_rows_updated_total{database="db01"}'] = rows_updated
-        rows_deleted = filter_metric(metrics, 'postgres_rows_deleted_total', {"database": "db01"})
-        if rows_deleted is not None:
-            metrics['postgres_rows_deleted_total{database="db01"}'] = rows_deleted
-        blocks_read = filter_metric(metrics, 'postgres_blocks_reads_total', {"database": "db01"})
-        if blocks_read is not None:
-            metrics['postgres_blocks_reads_total{database="db01"}'] = blocks_read
-        rows_inserted = filter_metric(metrics, 'postgres_rows_inserted_total', {"database": "db01"})
-        if rows_inserted is not None:
-            metrics['postgres_rows_inserted_total{database="db01"}'] = rows_inserted
-        jetty_conn = filter_metric(metrics, 'jetty_connections_current_connections', {"connector_name": "unnamed"})
-        if jetty_conn is not None:
-            metrics['jetty_connections_current_connections{connector_name="unnamed"}'] = jetty_conn
-        bytes_in = filter_metric(metrics, 'jetty_connections_bytes_in_bytes_sum', {"connector_name": "unnamed"})
-        if bytes_in is not None:
-            metrics['jetty_connections_bytes_in_bytes_sum{connector_name="unnamed"}'] = bytes_in
-        bytes_out = filter_metric(metrics, 'jetty_connections_bytes_out_bytes_sum', {"connector_name": "unnamed"})
-        if bytes_out is not None:
-            metrics['jetty_connections_bytes_out_bytes_sum{connector_name="unnamed"}'] = bytes_out
-        # Формируем ответ
-        return {
-            "metrics": metrics,
-            "config": METRICS_CONFIG,
-            "prominent": PROMINENT_METRICS,
-            "last_updated": now,
-            "error": None
-        }
-    # --- PROD режим ---
+    print("[DEBUG] get_metrics_data: вызван")
     with lock:
+        print(f"[DEBUG] get_metrics_data: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")
+        print(f"[DEBUG] get_metrics_data: last_error: {metrics_data['last_error']}")
         metrics = prepare_metrics_data()
         if metrics_data["last_error"]:
             for name in INITIAL_METRICS:
                 metrics[name] = 0.0
-        return {
+        result = {
             "metrics": metrics,
             "config": METRICS_CONFIG,
             "prominent": PROMINENT_METRICS,
             "last_updated": metrics_data["last_updated"],
             "error": metrics_data["last_error"]
         }
+        print(f"[DEBUG] get_metrics_data: возвращает {len(metrics)} метрик")
+        return result
 
 def get_metrics_history():
     """

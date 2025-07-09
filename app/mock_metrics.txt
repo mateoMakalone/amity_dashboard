@@ -1,0 +1,221 @@
+# HELP jvm_classes_unloaded_classes_total The total number of classes unloaded since the Java virtual machine has started execution
+# TYPE jvm_classes_unloaded_classes_total counter
+jvm_classes_unloaded_classes_total 52.0
+# HELP jetty_connections_max_connections The maximum number of observed connections over a rolling 2-minute interval
+# TYPE jetty_connections_max_connections gauge
+jetty_connections_max_connections{connector_name="unnamed",} 4.0
+# HELP jvm_threads_daemon_threads The current number of live daemon threads
+# TYPE jvm_threads_daemon_threads gauge
+jvm_threads_daemon_threads 20.0
+# HELP jvm_buffer_total_capacity_bytes An estimate of the total capacity of the buffers in this pool
+# TYPE jvm_buffer_total_capacity_bytes gauge
+jvm_buffer_total_capacity_bytes{id="mapped - 'non-volatile memory'",} 0.0
+jvm_buffer_total_capacity_bytes{id="mapped",} 0.0
+jvm_buffer_total_capacity_bytes{id="direct",} 254318.0
+# HELP jvm_threads_peak_threads The peak live thread count since the Java virtual machine started or peak was reset
+# TYPE jvm_threads_peak_threads gauge
+jvm_threads_peak_threads 43.0
+# HELP postgres_checkpoints_timed_total Number of checkpoints timed
+# TYPE postgres_checkpoints_timed_total counter
+postgres_checkpoints_timed_total{database="db01",} 571.0
+# HELP jetty_server_async_expires_total Asynchronous operations that timed out before completing
+# TYPE jetty_server_async_expires_total counter
+jetty_server_async_expires_total 0.0
+# HELP jetty_server_requests_seconds_max HTTP requests to the Jetty server
+# TYPE jetty_server_requests_seconds_max gauge
+jetty_server_requests_seconds_max{method="POST",outcome="SERVER_ERROR",status="500",} 0.0
+jetty_server_requests_seconds_max{method="POST",outcome="SUCCESS",status="200",} 1.928951872
+jetty_server_requests_seconds_max{method="GET",outcome="SUCCESS",status="200",} 0.455001593
+# HELP jetty_server_requests_seconds HTTP requests to the Jetty server
+# TYPE jetty_server_requests_seconds summary
+jetty_server_requests_seconds_count{method="POST",outcome="SERVER_ERROR",status="500",} 1.0
+jetty_server_requests_seconds_sum{method="POST",outcome="SERVER_ERROR",status="500",} 1.722175775
+jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200",} 14103.0
+jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200",} 33618.336657223
+jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200",} 172528.0
+jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200",} 29834.819984784
+# HELP jvm_buffer_memory_used_bytes An estimate of the memory that the Java virtual machine is using for this buffer pool
+# TYPE jvm_buffer_memory_used_bytes gauge
+jvm_buffer_memory_used_bytes{id="mapped - 'non-volatile memory'",} 0.0
+jvm_buffer_memory_used_bytes{id="mapped",} 0.0
+jvm_buffer_memory_used_bytes{id="direct",} 254318.0
+# HELP postgres_rows_deleted_total Number of rows deleted from the db
+# TYPE postgres_rows_deleted_total counter
+postgres_rows_deleted_total{database="db01",} 21793.0
+# HELP postgres_size The database size
+# TYPE postgres_size gauge
+postgres_size{database="db01",} 1.063216125E9
+# HELP jetty_connections_messages_out_messages_total Messages sent by tracked connections
+# TYPE jetty_connections_messages_out_messages_total counter
+jetty_connections_messages_out_messages_total{connector_name="unnamed",} 186432.0
+# HELP jetty_server_dispatches_open_seconds Jetty dispatches that are currently in progress
+# TYPE jetty_server_dispatches_open_seconds summary
+jetty_server_dispatches_open_seconds_active_count 2.0
+jetty_server_dispatches_open_seconds_duration_sum 0.118281427
+# HELP jetty_server_dispatches_open_seconds_max Jetty dispatches that are currently in progress
+# TYPE jetty_server_dispatches_open_seconds_max gauge
+jetty_server_dispatches_open_seconds_max 0.084171845
+# HELP process_cpu_usage The "recent cpu usage" for the Java Virtual Machine process
+# TYPE process_cpu_usage gauge
+process_cpu_usage 0.03571428571428571
+# HELP jvm_buffer_count_buffers An estimate of the number of buffers in the pool
+# TYPE jvm_buffer_count_buffers gauge
+jvm_buffer_count_buffers{id="mapped - 'non-volatile memory'",} 0.0
+jvm_buffer_count_buffers{id="mapped",} 0.0
+jvm_buffer_count_buffers{id="direct",} 18.0
+# HELP jvm_memory_committed_bytes The amount of memory in bytes that is committed for the Java virtual machine to use
+# TYPE jvm_memory_committed_bytes gauge
+jvm_memory_committed_bytes{area="heap",id="Tenured Gen",} 2.30641664E8
+jvm_memory_committed_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'",} 2.818048E7
+jvm_memory_committed_bytes{area="heap",id="Eden Space",} 9.240576E7
+jvm_memory_committed_bytes{area="nonheap",id="Metaspace",} 8.0543744E7
+jvm_memory_committed_bytes{area="nonheap",id="CodeHeap 'non-nmethods'",} 2555904.0
+jvm_memory_committed_bytes{area="heap",id="Survivor Space",} 1.1534336E7
+jvm_memory_committed_bytes{area="nonheap",id="Compressed Class Space",} 9109504.0
+jvm_memory_committed_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'",} 2.3855104E7
+# HELP jetty_connections_current_connections The current number of open Jetty connections
+# TYPE jetty_connections_current_connections gauge
+jetty_connections_current_connections{connector_name="unnamed",} 2.0
+# HELP jvm_gc_memory_promoted_bytes_total Count of positive increases in the size of the old generation memory pool before GC to after GC
+# TYPE jvm_gc_memory_promoted_bytes_total counter
+jvm_gc_memory_promoted_bytes_total 2.18426728E8
+# HELP jetty_connections_messages_in_messages_total Messages received by tracked connections
+# TYPE jetty_connections_messages_in_messages_total counter
+jetty_connections_messages_in_messages_total{connector_name="unnamed",} 186432.0
+# HELP jvm_gc_memory_allocated_bytes_total Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next
+# TYPE jvm_gc_memory_allocated_bytes_total counter
+jvm_gc_memory_allocated_bytes_total 2.13540777256E11
+# HELP jvm_memory_max_bytes The maximum amount of memory in bytes that can be used for memory management
+# TYPE jvm_memory_max_bytes gauge
+jvm_memory_max_bytes{area="heap",id="Tenured Gen",} 1.4680064E9
+jvm_memory_max_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'",} 1.22912768E8
+jvm_memory_max_bytes{area="heap",id="Eden Space",} 5.8720256E8
+jvm_memory_max_bytes{area="nonheap",id="Metaspace",} 6.7108864E8
+jvm_memory_max_bytes{area="nonheap",id="CodeHeap 'non-nmethods'",} 5828608.0
+jvm_memory_max_bytes{area="heap",id="Survivor Space",} 7.340032E7
+jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 5.36870912E8
+jvm_memory_max_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'",} 1.22916864E8
+# HELP postgres_buffers_checkpoint_total Number of buffers written during checkpoints
+# TYPE postgres_buffers_checkpoint_total counter
+postgres_buffers_checkpoint_total{database="db01",} 1448903.0
+# HELP jvm_gc_max_data_size_bytes Max size of long-lived heap memory pool
+# TYPE jvm_gc_max_data_size_bytes gauge
+jvm_gc_max_data_size_bytes 1.4680064E9
+# HELP postgres_buffers_backend_total Number of buffers written directly by a backend
+# TYPE postgres_buffers_backend_total counter
+postgres_buffers_backend_total{database="db01",} 136907.0
+# HELP postgres_checkpoints_requested_total Number of checkpoints requested
+# TYPE postgres_checkpoints_requested_total counter
+postgres_checkpoints_requested_total{database="db01",} 2.0
+# HELP postgres_rows_updated_total Number of rows updated from the db
+# TYPE postgres_rows_updated_total counter
+postgres_rows_updated_total{database="db01",} 3542683.0
+# HELP postgres_buffers_clean_total Number of buffers written by the background writer
+# TYPE postgres_buffers_clean_total counter
+postgres_buffers_clean_total{database="db01",} 0.0
+# HELP postgres_blocks_reads_total Number of disk blocks read in this database
+# TYPE postgres_blocks_reads_total counter
+postgres_blocks_reads_total{database="db01",} 151569.0
+# HELP jvm_memory_used_bytes The amount of used memory
+# TYPE jvm_memory_used_bytes gauge
+jvm_memory_used_bytes{area="heap",id="Tenured Gen",} 1.74861864E8
+jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'",} 1.9976448E7
+jvm_memory_used_bytes{area="heap",id="Eden Space",} 5.1740456E7
+jvm_memory_used_bytes{area="nonheap",id="Metaspace",} 8.0185328E7
+jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-nmethods'",} 1467648.0
+jvm_memory_used_bytes{area="heap",id="Survivor Space",} 2105288.0
+jvm_memory_used_bytes{area="nonheap",id="Compressed Class Space",} 8920560.0
+jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'",} 2.3792128E7
+# HELP postgres_rows_fetched_total Number of rows fetched from the db
+# TYPE postgres_rows_fetched_total counter
+postgres_rows_fetched_total{database="db01",} 1.50916534E8
+# HELP jvm_threads_live_threads The current number of live threads including both daemon and non-daemon threads
+# TYPE jvm_threads_live_threads gauge
+jvm_threads_live_threads 40.0
+# HELP postgres_temp_writes_bytes_total The total amount of temporary writes to disk to execute queries
+# TYPE postgres_temp_writes_bytes_total counter
+postgres_temp_writes_bytes_total{database="db01",} 5.5304192E7
+# HELP jvm_threads_states_threads The current number of threads
+# TYPE jvm_threads_states_threads gauge
+jvm_threads_states_threads{state="runnable",} 19.0
+jvm_threads_states_threads{state="blocked",} 0.0
+jvm_threads_states_threads{state="waiting",} 10.0
+jvm_threads_states_threads{state="timed-waiting",} 11.0
+jvm_threads_states_threads{state="new",} 0.0
+jvm_threads_states_threads{state="terminated",} 0.0
+# HELP postgres_rows_dead Total number of dead rows in the current database
+# TYPE postgres_rows_dead gauge
+postgres_rows_dead{database="db01",} 15152.0
+# HELP jetty_connections_bytes_out_bytes Bytes sent by tracked connections
+# TYPE jetty_connections_bytes_out_bytes summary
+jetty_connections_bytes_out_bytes_count{connector_name="unnamed",} 107280.0
+jetty_connections_bytes_out_bytes_sum{connector_name="unnamed",} 1.137529268E9
+# HELP jetty_connections_bytes_out_bytes_max Bytes sent by tracked connections
+# TYPE jetty_connections_bytes_out_bytes_max gauge
+jetty_connections_bytes_out_bytes_max{connector_name="unnamed",} 29183.0
+# HELP system_cpu_count The number of processors available to the Java virtual machine
+# TYPE system_cpu_count gauge
+system_cpu_count 1.0
+# HELP system_load_average_1m The sum of the number of runnable entities queued to available processors and the number of runnable entities running on the available processors averaged over a period of time
+# TYPE system_load_average_1m gauge
+system_load_average_1m 0.35
+# HELP postgres_transactions_total Total number of transactions executed (commits + rollbacks)
+# TYPE postgres_transactions_total counter
+postgres_transactions_total{database="db01",} 2.821549E7
+# HELP tx_pool_size  
+# TYPE tx_pool_size gauge
+tx_pool_size 0.0
+# HELP system_cpu_usage The "recent cpu usage" of the system the application is running in
+# TYPE system_cpu_usage gauge
+system_cpu_usage 0.0
+# HELP postgres_blocks_hits_total Number of times disk blocks were found already in the buffer cache, so that a read was not necessary
+# TYPE postgres_blocks_hits_total counter
+postgres_blocks_hits_total{database="db01",} 3.54809249E8
+# HELP jetty_server_async_waits_operations Pending asynchronous wait operations
+# TYPE jetty_server_async_waits_operations gauge
+jetty_server_async_waits_operations 0.0
+# HELP jetty_connections_request_seconds Jetty client or server requests
+# TYPE jetty_connections_request_seconds summary
+jetty_connections_request_seconds_count{connector_name="unnamed",type="server",} 107280.0
+jetty_connections_request_seconds_sum{connector_name="unnamed",type="server",} 484131.771274334
+# HELP jetty_connections_request_seconds_max Jetty client or server requests
+# TYPE jetty_connections_request_seconds_max gauge
+jetty_connections_request_seconds_max{connector_name="unnamed",type="server",} 31.363477949
+# HELP jvm_classes_loaded_classes The number of classes that are currently loaded in the Java virtual machine
+# TYPE jvm_classes_loaded_classes gauge
+jvm_classes_loaded_classes 10677.0
+# HELP postgres_locks Number of locks on the given db
+# TYPE postgres_locks gauge
+postgres_locks{database="db01",} 1.0
+# HELP jvm_threads_started_threads_total The total number of application threads started in the JVM
+# TYPE jvm_threads_started_threads_total counter
+jvm_threads_started_threads_total 44692.0
+# HELP jetty_server_async_dispatches_total Asynchronous dispatches
+# TYPE jetty_server_async_dispatches_total counter
+jetty_server_async_dispatches_total 0.0
+# HELP jetty_connections_bytes_in_bytes Bytes received by tracked connections
+# TYPE jetty_connections_bytes_in_bytes summary
+jetty_connections_bytes_in_bytes_count{connector_name="unnamed",} 107280.0
+jetty_connections_bytes_in_bytes_sum{connector_name="unnamed",} 2.16809632E8
+# HELP jetty_connections_bytes_in_bytes_max Bytes received by tracked connections
+# TYPE jetty_connections_bytes_in_bytes_max gauge
+jetty_connections_bytes_in_bytes_max{connector_name="unnamed",} 2668.0
+# HELP jvm_gc_pause_seconds Time spent in GC pause
+# TYPE jvm_gc_pause_seconds summary
+jvm_gc_pause_seconds_count{action="end of minor GC",cause="Allocation Failure",gc="Copy",} 3929.0
+jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Allocation Failure",gc="Copy",} 19.309
+jvm_gc_pause_seconds_count{action="end of major GC",cause="Allocation Failure",gc="MarkSweepCompact",} 5.0
+jvm_gc_pause_seconds_sum{action="end of major GC",cause="Allocation Failure",gc="MarkSweepCompact",} 1.3
+# HELP jvm_gc_pause_seconds_max Time spent in GC pause
+# TYPE jvm_gc_pause_seconds_max gauge
+jvm_gc_pause_seconds_max{action="end of minor GC",cause="Allocation Failure",gc="Copy",} 0.004
+jvm_gc_pause_seconds_max{action="end of major GC",cause="Allocation Failure",gc="MarkSweepCompact",} 0.0
+# HELP jvm_gc_live_data_size_bytes Size of long-lived heap memory pool after reclamation
+# TYPE jvm_gc_live_data_size_bytes gauge
+jvm_gc_live_data_size_bytes 1.3838356E8
+# HELP postgres_connections Number of active connections to the given db
+# TYPE postgres_connections gauge
+postgres_connections{database="db01",} 69.0
+# HELP postgres_rows_inserted_total Number of rows inserted from the db
+# TYPE postgres_rows_inserted_total counter
+postgres_rows_inserted_total{database="db01",} 1193908.0

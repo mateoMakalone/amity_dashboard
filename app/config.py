@@ -1,4 +1,4 @@
-DASHBOARD_DEBUG = False  # Меняйте на True для включения debug-режима
+DASHBOARD_DEBUG = True  # Меняйте на True для включения debug-режима
 METRICS_URL = "http://server:5110/metrics"
 UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0

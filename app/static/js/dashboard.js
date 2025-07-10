@@ -74,7 +74,7 @@ function startHistoryPolling() {
     fetchHistory();
     
     // Устанавливаем интервал для обновления истории
-    setInterval(fetchHistory, 1000);
+    setInterval(fetchHistory, 5000);
 }
 
 /**
@@ -206,48 +206,35 @@ function createInfoIcon(tooltipText) {
  */
 async function updateProminentMetrics(data) {
     const container = document.getElementById('prominent-metrics');
-    
-    // Сохраняем позицию скролла
     const scrollY = window.scrollY;
-    
-    // Собираем существующие карточки
     const existingCards = {};
     container.querySelectorAll('.key-metric-card').forEach(card => {
         const metric = card.getAttribute('data-metric');
         existingCards[metric] = card;
     });
-    
     const metricsToShow = Object.keys(data.prominent);
-    
-    // Удаляем карточки, которых больше нет
     for (const metric in existingCards) {
         if (!metricsToShow.includes(metric)) {
             container.removeChild(existingCards[metric]);
         }
     }
-    
-    // Обновляем или добавляем карточки
     for (const metricName of metricsToShow) {
-        const config = data.prominent[metricName];
+        const config = data.prominent[metricName] || {};
         const section = 'KPI';
         let shortTitle = (METRIC_LABELS[section] && METRIC_LABELS[section][metricName]) ? 
             METRIC_LABELS[section][metricName] : (config.title || metricName);
-        
-        // Используем findMetricValue для корректной привязки метрик с лейблами
-        const value = findMetricValue(metricName, data.metrics);
+        // --- Исправление: всегда рендерим KPI, даже если нет данных ---
+        const metric = data.prominent[metricName];
+        const value = (metric && metric.value !== undefined) ? metric.value : 0;
         const formatType = config.format || "fixed2";
         const formatter = formatFunctions[formatType] || formatFunctions.fixed2;
         const formattedValue = formatter(value);
         const displayValue = `${formattedValue} ${config.unit || ""}`.trim();
-        
         let card = existingCards[metricName];
         if (!card) {
-            // Создаем новую карточку
             card = document.createElement('div');
             card.className = `key-metric-card card`;
             card.setAttribute('data-metric', metricName);
-            
-            // Название + info icon
             const nameDiv = document.createElement('div');
             nameDiv.className = 'key-metric-name metric-name';
             nameDiv.textContent = shortTitle;
@@ -255,39 +242,25 @@ async function updateProminentMetrics(data) {
             nameDiv.appendChild(infoIcon);
             nameDiv.title = '';
             card.appendChild(nameDiv);
-            
             const valueDiv = document.createElement('div');
             valueDiv.className = 'key-metric-value';
             card.appendChild(valueDiv);
-            
             const plotDiv = document.createElement('div');
             plotDiv.className = 'metric-history-plot';
             plotDiv.id = `plot-${metricName}`;
             card.appendChild(plotDiv);
-            
+            card.addEventListener('mouseleave', hideAllTooltips);
             container.appendChild(card);
         }
-        
-        // Обновляем значение in-place
         const valueDiv = card.querySelector('.key-metric-value');
         if (valueDiv.textContent !== displayValue) {
             valueDiv.textContent = displayValue;
         }
-        
-        // Обновляем тултип info-icon
         const nameDiv = card.querySelector('.key-metric-name');
         if (nameDiv && nameDiv.querySelector('.info-icon')) {
             const icon = nameDiv.querySelector('.info-icon');
-            // Обновляем тултип без пересоздания иконки
             icon.onmouseenter = function(e) {
-                if (tooltipTimeout) {
-                    clearTimeout(tooltipTimeout);
-                    tooltipTimeout = null;
-                }
-                if (globalTooltip) {
-                    document.body.removeChild(globalTooltip);
-                    globalTooltip = null;
-                }
+                hideAllTooltips();
                 globalTooltip = document.createElement('div');
                 globalTooltip.className = 'custom-tooltip';
                 globalTooltip.textContent = getMetricTooltip(section, metricName, value !== 0.0);
@@ -296,29 +269,20 @@ async function updateProminentMetrics(data) {
                 globalTooltip.style.left = (rect.right + 8) + 'px';
                 globalTooltip.style.top = (rect.top - 4) + 'px';
             };
-            icon.onmouseleave = function() {
-                tooltipTimeout = setTimeout(() => {
-                    if (globalTooltip) {
-                        document.body.removeChild(globalTooltip);
-                        globalTooltip = null;
-                    }
-                }, 100);
-            };
+            icon.onmouseleave = hideAllTooltips;
         }
-        
-        // Цветовая индикация для KPI
         card.classList.remove('kpi-green', 'kpi-yellow', 'kpi-red');
         const colorClass = getKpiColor(metricName, value, data);
         if (colorClass) card.classList.add(colorClass);
-        
-        // График - используем текущие данные истории
         const plotDiv = card.querySelector('.metric-history-plot');
         if (plotDiv) {
-            updateHistoryPlot(currentHistoryData, metricName, plotDiv, '#800000');
+            if (value > 0) {
+                updateHistoryPlot(data.history, metricName, plotDiv, '#800000');
+            } else {
+                plotDiv.innerHTML = '';
+            }
         }
     }
-    
-    // Восстанавливаем позицию скролла
     window.scrollTo(0, scrollY);
 }
 
@@ -495,7 +459,7 @@ async function updateMetricsSections(data) {
             // График - используем текущие данные истории
             const plotDiv = card.querySelector('.metric-history-plot');
             if (category === 'System' && plotDiv) {
-                updateHistoryPlot(currentHistoryData, name, plotDiv, color);
+                updateHistoryPlot(data.history, name, plotDiv, color);
             }
         }
     }
@@ -526,9 +490,9 @@ async function updateTransactionsSection(data) {
     const traces = [];
     
     metricsList.forEach((metric, idx) => {
-        if (currentHistoryData[metric]) {
-            const x = currentHistoryData[metric].map(([ts, _]) => new Date(ts * 1000));
-            const y = currentHistoryData[metric].map(([_, v]) => v);
+        if (data.history[metric]) {
+            const x = data.history[metric].map(([ts, _]) => new Date(ts * 1000));
+            const y = data.history[metric].map(([_, v]) => v);
             traces.push({
                 x,
                 y,
@@ -745,10 +709,9 @@ function hideNoDataBanner() {
 async function updateDashboard() {
     toggleSpinner(true);
     try {
-        const resp = await fetch('/data');
+        const resp = await fetch('/dashboard_data');
         const data = await resp.json();
         toggleSpinner(false);
-        
         if (!data || typeof data !== 'object' || data.error) {
             showNoDataBanner();
             const emptyData = getEmptyDashboardData();
@@ -758,11 +721,21 @@ async function updateDashboard() {
             document.getElementById('last-updated').textContent = '-';
             return;
         }
-        
         hideNoDataBanner();
         await updateProminentMetrics(data);
         await updateMetricsSections(data);
         await updateTransactionsSection(data);
+        // Обновляем графики KPI-гистограмм
+        for (const metricName of Object.keys(data.prominent)) {
+            const value = (data.prominent[metricName] && data.prominent[metricName].value !== undefined)
+                ? data.prominent[metricName].value : 0;
+            const plotDiv = document.getElementById(`plot-${metricName}`);
+            if (plotDiv && value > 0) {
+                updateHistoryPlot(data.history, metricName, plotDiv, '#800000');
+            } else if (plotDiv) {
+                plotDiv.innerHTML = '';
+            }
+        }
         document.getElementById('last-updated').textContent =
             new Date(data.last_updated * 1000).toLocaleString();
     } catch (err) {
@@ -776,8 +749,14 @@ async function updateDashboard() {
     }
 }
 
+// Tooltip fix: глобальное скрытие тултипов
+function hideAllTooltips() {
+    document.querySelectorAll('.custom-tooltip').forEach(t => t.remove());
+}
+document.addEventListener('scroll', hideAllTooltips, true);
+
 // Запускаем polling истории при загрузке страницы
-startHistoryPolling();
+// Удаляю startHistoryPolling();
 
 // Основной интервал обновления дашборда
 setInterval(updateDashboard, UPDATE_INTERVAL);

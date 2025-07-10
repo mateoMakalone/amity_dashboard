@@ -73,6 +73,32 @@ def sum_metric(metrics, base, labels=None):
             found = True
     return total if found else None
 
+def get_metric(metrics, name):
+    if name in metrics:
+        return metrics[name]
+    for key in metrics:
+        if key.startswith(name + "{"):
+            return metrics[key]
+    return 0
+
+def eval_formula(formula, metrics):
+    """
+    Безопасно вычисляет формулу для KPI-метрик, поддерживает sum(...)
+    """
+    def sum_expr(name):
+        base_name = name.split('{')[0]
+        return sum(val for key, val in metrics.items() if key.startswith(base_name + '{'))
+    try:
+        modified_formula = formula.replace("sum(", "sum_expr(")
+        result = eval(modified_formula, {"sum_expr": sum_expr})
+        if isinstance(result, float) and (result == float('inf') or result != result):
+            return 0.0
+        return result
+    except ZeroDivisionError:
+        return 0.0
+    except Exception:
+        return 0.0
+
 def should_display_metric(metric_name, config):
     base_name = metric_name.split('{')[0]
     for category in config:

@@ -1,7 +1,3 @@
-# Debug режим - читать из mock_metrics.txt вместо /metrics
-DEBUG_MODE = True  # Меняйте на False для prod режима
-print(f"[INFO] DEBUG MODE = {DEBUG_MODE}")
-
 METRICS_URL = "http://server:5110/metrics"
 UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0
@@ -74,62 +70,60 @@ PROMINENT_METRICS = {
     "tx_pool_size": {
         "title": "Transaction Pool",
         "unit": "",
-        "color": "#145a32",
-        "format": "fixed0"
+        "format": "fixed0",
+        "thresholds": {"warning": 1000, "critical": 5000}
     },
     "jetty_server_requests_seconds_avg": {
-        "title": "API Response Time (avg)",
+        "title": "Jetty Avg Response Time",
         "unit": "s",
-        "color": "#145a32",
         "format": "fixed2",
-        "formula": "sum('jetty_server_requests_seconds_sum') / sum('jetty_server_requests_seconds_count')"
+        "formula": "sum(jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}) / sum(jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"})",
+        "thresholds": {"warning": 3.0, "critical": 5.0}
     },
     "process_cpu_usage": {
         "title": "CPU Usage",
         "unit": "%",
-        "color": "#145a32",
-        "format": "fixed2"
+        "format": "fixed2",
+        "thresholds": {"warning": 0.85, "critical": 0.95}
     },
     "postgres_locks": {
         "title": "Postgres Locks",
         "unit": "",
-        "color": "#145a32",
-        "format": "fixed0"
+        "format": "fixed0",
+        "thresholds": {"warning": 10, "critical": 50}
     },
     "jvm_gc_pause_seconds_sum": {
-        "title": "GC Pause (s)",
+        "title": "GC Pause (major)",
         "unit": "s",
-        "color": "#145a32",
-        "format": "fixed2"
+        "format": "fixed2",
+        "thresholds": {"warning": 1.0, "critical": 3.0}
     },
     "postgres_connections": {
         "title": "DB Connections",
         "unit": "",
-        "color": "#145a32",
-        "format": "fixed0"
+        "format": "fixed0",
+        "thresholds": {"warning": 100, "critical": 150}
     },
     "jvm_memory_used_bytes": {
         "title": "JVM Memory Used",
         "unit": "B",
-        "color": "#145a32",
-        "format": "fixed0"
+        "format": "fixed0",
+        "thresholds": {"warning": 0.75, "critical": 0.9, "isRatio": True}
     },
     "system_load_average_1m": {
         "title": "System Load (1m)",
         "unit": "",
-        "color": "#145a32",
-        "format": "fixed2"
+        "format": "fixed2",
+        "thresholds": {"warning": 2.0, "critical": 4.0}
     },
     "jetty_server_requests_seconds_count": {
         "title": "Jetty Requests Count",
         "unit": "",
-        "color": "#145a32",
         "format": "fixed0"
     },
     "postgres_rows_inserted_total": {
         "title": "Rows Inserted",
         "unit": "",
-        "color": "#145a32",
         "format": "fixed0"
     }
 }

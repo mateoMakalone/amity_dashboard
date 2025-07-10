@@ -199,3 +199,13 @@ body {
     pointer-events: none;
     opacity: 0.97;
 }
+
+.key-metric-card, .metric-card {
+    min-height: 140px;
+}
+.key-metric-value, .metric-value {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}

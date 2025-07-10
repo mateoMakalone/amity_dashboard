@@ -69,6 +69,7 @@ class MetricsService:
         """
         raw_metrics, error = MetricsService.fetch_prometheus_metrics(METRICS_URL)
         if error:
+            print(f"[DEBUG] get_metrics_data: error={error}")
             return {"metrics": {}, "prominent": {}, "error": error}
         metrics = MetricsService.normalize_metrics(raw_metrics)
         # Вычисляем KPI-метрики (формула/прямой доступ)
@@ -85,6 +86,10 @@ class MetricsService:
             if value is None:
                 value = 0.0
             prominent[name] = value
+        # DEBUG LOG
+        print("[DEBUG] get_metrics_data: prominent=", prominent)
+        print("[DEBUG] get_metrics_data: metrics keys=", list(metrics.keys()))
+        print("[DEBUG] get_metrics_data: error=", error)
         return {"metrics": metrics, "prominent": prominent, "error": None}
 
 def update_metrics():

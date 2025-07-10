@@ -22,6 +22,9 @@ def parse_metrics(text):
                     value = float(value)
                 clean_key = MetricKeyHelper.normalize(name)
                 metrics[clean_key] = value
+                # Добавляем "чистый" ключ без лейблов
+                base_key = name.split('{')[0].strip()
+                metrics[base_key] = value
             except ValueError:
                 continue
     return metrics

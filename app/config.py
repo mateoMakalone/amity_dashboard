@@ -1,3 +1,9 @@
+# Удалён DEBUG_MODE и print
+
+# Моковый режим для тестирования фронта
+MOCK_MODE = True
+print(f"[INFO] MOCK MODE = {MOCK_MODE}")
+
 METRICS_URL = "http://server:5110/metrics"
 UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0

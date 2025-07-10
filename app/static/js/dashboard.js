@@ -85,7 +85,10 @@ function startHistoryPolling() {
  * @param {string} color - цвет линии
  */
 function updateHistoryPlot(historyData, metricName, plotDiv, color = '#800000') {
-    if (!historyData[metricName] || !plotDiv) return;
+    if (!historyData || !historyData[metricName]) {
+        plotDiv.innerHTML = '';
+        return;
+    }
     
     const x = historyData[metricName].map(([ts, _]) => new Date(ts * 1000));
     const y = historyData[metricName].map(([_, v]) => v);
@@ -205,6 +208,7 @@ function createInfoIcon(tooltipText) {
  * @param {object} data - данные метрик
  */
 async function updateProminentMetrics(data) {
+    console.log('PROMINENT DATA:', data.prominent);
     const container = document.getElementById('prominent-metrics');
     const scrollY = window.scrollY;
     const existingCards = {};
@@ -224,8 +228,7 @@ async function updateProminentMetrics(data) {
         let shortTitle = (METRIC_LABELS[section] && METRIC_LABELS[section][metricName]) ? 
             METRIC_LABELS[section][metricName] : (config.title || metricName);
         // --- Исправление: всегда рендерим KPI, даже если нет данных ---
-        const metric = data.prominent[metricName];
-        const value = (metric && metric.value !== undefined) ? metric.value : 0;
+        const value = (typeof data.prominent[metricName] === 'number') ? data.prominent[metricName] : 0;
         const formatType = config.format || "fixed2";
         const formatter = formatFunctions[formatType] || formatFunctions.fixed2;
         const formattedValue = formatter(value);
@@ -245,6 +248,11 @@ async function updateProminentMetrics(data) {
             const valueDiv = document.createElement('div');
             valueDiv.className = 'key-metric-value';
             card.appendChild(valueDiv);
+            // Добавляю подпись 'История' над графиком
+            const historyLabel = document.createElement('div');
+            historyLabel.className = 'metric-history-label';
+            historyLabel.textContent = 'История';
+            card.appendChild(historyLabel);
             const plotDiv = document.createElement('div');
             plotDiv.className = 'metric-history-plot';
             plotDiv.id = `plot-${metricName}`;
@@ -469,49 +477,124 @@ async function updateMetricsSections(data) {
 }
 
 async function updateTransactionsSection(data) {
-    const container = document.getElementById('metrics-sections');
-    let section = container.querySelector('section[data-category="Transactions"]');
-    if (!section) {
-        section = document.createElement('section');
-        section.className = 'metrics-section';
-        section.setAttribute('data-category', 'Transactions');
-        section.innerHTML = `<h2 class="section-title">Transactions</h2><div class="transactions-history-plot" id="transactions-history-plot"></div>`;
-        container.prepend(section);
-    }
-    const plotDiv = section.querySelector('.transactions-history-plot');
+    console.log("[DEBUG] updateTransactionsSection called");
+    console.log("[DEBUG] data.history keys:", Object.keys(data.history || {}));
     
-    // Метрики для графика
-    const metricsList = [
-        'postgres_transactions_total{database="db01"}',
-        'postgres_rows_updated_total{database="db01"}',
-        'postgres_rows_deleted_total{database="db01"}'
-    ];
-    const colors = ['#2980b9', '#27ae60', '#e74c3c'];
-    const traces = [];
-    
-    metricsList.forEach((metric, idx) => {
-        if (data.history[metric]) {
-            const x = data.history[metric].map(([ts, _]) => new Date(ts * 1000));
-            const y = data.history[metric].map(([_, v]) => v);
-            traces.push({
-                x,
-                y,
-                name: METRIC_LABELS.Transactions[metric] || metric,
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: { color: colors[idx] }
-            });
+    try {
+        const container = document.getElementById('metrics-sections');
+        if (!container) {
+            console.error("[ERROR] Container 'metrics-sections' not found");
+            return;
         }
-    });
-    
-    Plotly.react(plotDiv, traces, {
-        margin: { t: 30, b: 30, l: 40, r: 10 },
-        height: 220,
-        xaxis: { showgrid: false, tickformat: '%H:%M:%S', title: 'Time' },
-        yaxis: { showgrid: true, zeroline: false, title: 'Value' },
-        legend: { orientation: 'h', y: -0.2 },
-        title: 'Transactions History'
-    }, { displayModeBar: false });
+        
+        let section = container.querySelector('section[data-category="Transactions"]');
+        if (!section) {
+            section = document.createElement('section');
+            section.className = 'metrics-section';
+            section.setAttribute('data-category', 'Transactions');
+            section.innerHTML = `<h2 class="section-title">Transactions</h2><div class="transactions-history-plot" id="transactions-history-plot"></div>`;
+            container.prepend(section);
+        }
+        
+        const plotDiv = section.querySelector('.transactions-history-plot');
+        if (!plotDiv) {
+            console.error("[ERROR] Plot div not found");
+            return;
+        }
+        
+        // Метрики для графика
+        const metricsList = [
+            'postgres_transactions_total{database="db01"}',
+            'postgres_rows_updated_total{database="db01"}',
+            'postgres_rows_deleted_total{database="db01"}'
+        ];
+        const colors = ['#2980b9', '#27ae60', '#e74c3c'];
+        const traces = [];
+        
+        console.log("[DEBUG] Processing metrics:", metricsList);
+        
+        // Проверяем, что data.history существует
+        if (!data.history) {
+            console.warn("[WARN] data.history is undefined or null");
+            plotDiv.innerHTML = '<p>No history data available</p>';
+            return;
+        }
+        
+        metricsList.forEach((metric, idx) => {
+            console.log(`[DEBUG] Processing metric: ${metric}`);
+            
+            // Безопасная проверка существования метрики
+            const metricData = data.history[metric];
+            console.log(`[DEBUG] data.history[${metric}]:`, metricData);
+            
+            if (metricData && Array.isArray(metricData) && metricData.length > 0) {
+                console.log(`[DEBUG] Metric ${metric} has valid history data with ${metricData.length} points`);
+                
+                try {
+                    const x = metricData.map(([ts, _]) => new Date(ts * 1000));
+                    const y = metricData.map(([_, v]) => v);
+                    
+                    traces.push({
+                        x,
+                        y,
+                        name: METRIC_LABELS.Transactions[metric] || metric,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        line: { color: colors[idx] }
+                    });
+                    
+                    console.log(`[DEBUG] Successfully created trace for ${metric}`);
+                } catch (mapError) {
+                    console.error(`[ERROR] Failed to map data for metric ${metric}:`, mapError);
+                }
+            } else {
+                console.log(`[DEBUG] Metric ${metric} has no valid history data`);
+                console.log(`[DEBUG] metricData type:`, typeof metricData);
+                console.log(`[DEBUG] metricData is array:`, Array.isArray(metricData));
+                if (metricData) {
+                    console.log(`[DEBUG] metricData length:`, metricData.length);
+                }
+            }
+        });
+        
+        console.log("[DEBUG] Final traces:", traces);
+        
+        if (traces.length === 0) {
+            console.log("[DEBUG] No traces to render, showing empty plot");
+            plotDiv.innerHTML = '<p>No transaction data available</p>';
+            return;
+        }
+        
+        // Рендерим график
+        try {
+            Plotly.react(plotDiv, traces, {
+                margin: { t: 30, b: 30, l: 40, r: 10 },
+                height: 220,
+                xaxis: { showgrid: false, tickformat: '%H:%M:%S', title: 'Time' },
+                yaxis: { showgrid: true, zeroline: false, title: 'Value' },
+                legend: { orientation: 'h', y: -0.2 },
+                title: 'Transactions History'
+            }, { displayModeBar: false });
+            
+            console.log("[DEBUG] Plot rendered successfully");
+        } catch (plotError) {
+            console.error("[ERROR] Failed to render plot:", plotError);
+            plotDiv.innerHTML = '<p>Failed to render transaction plot</p>';
+        }
+        
+    } catch (error) {
+        console.error("[ERROR] updateTransactionsSection failed:", error);
+        const container = document.getElementById('metrics-sections');
+        if (container) {
+            let section = container.querySelector('section[data-category="Transactions"]');
+            if (section) {
+                const plotDiv = section.querySelector('.transactions-history-plot');
+                if (plotDiv) {
+                    plotDiv.innerHTML = '<p>Error loading transaction data</p>';
+                }
+            }
+        }
+    }
 }
 
 function getMetricCategory(metricName, config) {
@@ -706,13 +789,37 @@ function hideNoDataBanner() {
     if (banner) banner.style.display = 'none';
 }
 
+// Глобальная обработка ошибок
+window.addEventListener('error', function(e) {
+    console.error('[GLOBAL ERROR]', e.error);
+    console.error('[GLOBAL ERROR] Stack:', e.error?.stack);
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('[UNHANDLED PROMISE REJECTION]', e.reason);
+});
+
 async function updateDashboard() {
+    console.log('[DEBUG] updateDashboard started');
     toggleSpinner(true);
     try {
+        console.log('[DEBUG] Fetching dashboard data...');
         const resp = await fetch('/dashboard_data');
+        console.log('[DEBUG] Response status:', resp.status);
+        
+        if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        }
+        
         const data = await resp.json();
+        console.log('[DEBUG] Dashboard data received');
+        console.log('[DEBUG] data.history keys:', Object.keys(data.history || {}));
+        console.log('[DEBUG] data.prominent keys:', Object.keys(data.prominent || {}));
+        
         toggleSpinner(false);
-        if (!data || typeof data !== 'object' || data.error) {
+        
+        if (!data || typeof data !== 'object' || data.error !== null) {
+            console.log('[DEBUG] updateDashboard: showing no data banner');
             showNoDataBanner();
             const emptyData = getEmptyDashboardData();
             await updateProminentMetrics(emptyData);
@@ -721,14 +828,23 @@ async function updateDashboard() {
             document.getElementById('last-updated').textContent = '-';
             return;
         }
+        
+        console.log('[DEBUG] updateDashboard: hiding no data banner');
         hideNoDataBanner();
+        
+        console.log('[DEBUG] Updating prominent metrics...');
         await updateProminentMetrics(data);
+        
+        console.log('[DEBUG] Updating metrics sections...');
         await updateMetricsSections(data);
+        
+        console.log('[DEBUG] Updating transactions section...');
         await updateTransactionsSection(data);
+        
         // Обновляем графики KPI-гистограмм
+        console.log('[DEBUG] Updating KPI plots...');
         for (const metricName of Object.keys(data.prominent)) {
-            const value = (data.prominent[metricName] && data.prominent[metricName].value !== undefined)
-                ? data.prominent[metricName].value : 0;
+            const value = (typeof data.prominent[metricName] === 'number') ? data.prominent[metricName] : 0;
             const plotDiv = document.getElementById(`plot-${metricName}`);
             if (plotDiv && value > 0) {
                 updateHistoryPlot(data.history, metricName, plotDiv, '#800000');
@@ -736,9 +852,15 @@ async function updateDashboard() {
                 plotDiv.innerHTML = '';
             }
         }
+        
         document.getElementById('last-updated').textContent =
             new Date(data.last_updated * 1000).toLocaleString();
+            
+        console.log('[DEBUG] updateDashboard completed successfully');
+        
     } catch (err) {
+        console.error('[ERROR] updateDashboard failed:', err);
+        console.error('[ERROR] Stack:', err.stack);
         toggleSpinner(false);
         showNoDataBanner();
         const emptyData = getEmptyDashboardData();

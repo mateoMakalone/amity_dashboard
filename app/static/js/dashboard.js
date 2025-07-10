@@ -85,27 +85,82 @@ function startHistoryPolling() {
  * @param {string} color - цвет линии
  */
 function updateHistoryPlot(historyData, metricName, plotDiv, color = '#800000') {
-    if (!historyData || !historyData[metricName]) {
+    if (!historyData || !historyData[metricName] || historyData[metricName].length === 0) {
         plotDiv.innerHTML = '';
         return;
     }
     
-    const x = historyData[metricName].map(([ts, _]) => new Date(ts * 1000));
-    const y = historyData[metricName].map(([_, v]) => v);
+    const data = historyData[metricName];
+    const x = data.map(([ts, _]) => new Date(ts * 1000));
+    const y = data.map(([_, v]) => v);
     
-    Plotly.react(plotDiv, [{
-        x, 
-        y, 
-        type: 'scatter', 
-        mode: 'lines', 
-        line: {color: color}
-    }], {
+    // Определяем формат для Y-оси в зависимости от типа метрики
+    let yAxisFormat = '.2f';
+    let yAxisTitle = '';
+    
+    if (metricName.includes('seconds_avg') || metricName.includes('response_time')) {
+        yAxisFormat = '.3f';
+        yAxisTitle = 'сек';
+    } else if (metricName.includes('cpu_usage') || metricName.includes('load_average')) {
+        yAxisFormat = '.2f';
+        yAxisTitle = '';
+    } else if (metricName.includes('memory_used_bytes')) {
+        yAxisFormat = '.0f';
+        yAxisTitle = 'байт';
+    } else if (metricName.includes('count') || metricName.includes('total') || metricName.includes('size')) {
+        yAxisFormat = '.0f';
+        yAxisTitle = '';
+    } else if (metricName.includes('connections') || metricName.includes('locks')) {
+        yAxisFormat = '.0f';
+        yAxisTitle = '';
+    }
+    
+    // Настройки макета для лучшего отображения
+    const layout = {
         margin: {t: 10, b: 30, l: 40, r: 10},
         height: 120,
-        xaxis: {showgrid: false, tickformat: '%H:%M:%S'},
-        yaxis: {showgrid: true, zeroline: false},
-        displayModeBar: false
-    }, {displayModeBar: false});
+        xaxis: {
+            showgrid: false, 
+            tickformat: '%H:%M:%S',
+            tickangle: 0,
+            tickfont: {size: 10}
+        },
+        yaxis: {
+            showgrid: true, 
+            zeroline: false,
+            tickformat: yAxisFormat,
+            tickfont: {size: 10},
+            title: yAxisTitle,
+            titlefont: {size: 10}
+        },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        hovermode: 'x unified',
+        hoverlabel: {
+            bgcolor: 'rgba(0,0,0,0.8)',
+            font: {size: 11}
+        }
+    };
+    
+    // Настройки данных
+    const plotData = [{
+        x: x, 
+        y: y, 
+        type: 'scatter', 
+        mode: 'lines', 
+        line: {
+            color: color,
+            width: 2
+        },
+        fill: 'tonexty',
+        fillcolor: color + '20',
+        hovertemplate: '%{y:.3f}<extra></extra>'
+    }];
+    
+    Plotly.react(plotDiv, plotData, layout, {
+        displayModeBar: false,
+        responsive: true
+    });
 }
 
 // Пороговые значения для KPI-метрик (из ТЗ)

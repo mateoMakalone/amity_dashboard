@@ -1,4 +1,5 @@
 import re
+from app.utils_metric_key import MetricKeyHelper
 
 def parse_metrics(text):
     metrics = {}
@@ -19,7 +20,8 @@ def parse_metrics(text):
                 else:
                     name, value = line.rsplit(' ', 1)
                     value = float(value)
-                metrics[name] = value
+                clean_key = MetricKeyHelper.normalize(name)
+                metrics[clean_key] = value
             except ValueError:
                 continue
     return metrics

@@ -5,6 +5,7 @@ import os
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric, filter_metric, sum_metric, get_metric, eval_formula
 from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, HISTORY_LENGTH, METRICS_CONFIG, PROMINENT_METRICS, INITIAL_METRICS
+from app.utils_metric_key import MetricKeyHelper
 
 HISTORY_SECONDS = 3600  # 1 час
 HISTORY_POINTS = int(HISTORY_SECONDS / UPDATE_INTERVAL)
@@ -74,10 +75,13 @@ class MetricsService:
         prominent = {}
         for name, config in PROMINENT_METRICS.items():
             value = None
-            if "formula" in config:
+            norm_name = MetricKeyHelper.normalize(name)
+            if norm_name in metrics:
+                value = metrics[norm_name]
+            elif "formula" in config:
                 value = eval_formula(config["formula"], metrics)
             else:
-                value = get_metric(metrics, name)
+                value = get_metric(metrics, norm_name)
             if value is None:
                 value = 0.0
             prominent[name] = value

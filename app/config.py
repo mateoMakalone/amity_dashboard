@@ -80,13 +80,13 @@ PROMINENT_METRICS = {
         "thresholds": {"warning": 1000, "critical": 5000}
     },
     "jetty_server_requests_seconds_avg": {
-        "title": "Jetty Avg Response Time",
+        "title": "API Response Time (avg)",
         "unit": "s",
-        "format": "fixed2",
-        "formula": "sum(jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}) / sum(jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"})",
-        "thresholds": {"warning": 3.0, "critical": 5.0}
+        "format": "fixed3",
+        "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\"}))",
+        "thresholds": {"warning": 0.5, "critical": 1.0}
     },
-    "process_cpu_usage": {
+    "system_cpu_usage": {
         "title": "CPU Usage",
         "unit": "%",
         "format": "fixed2",
@@ -99,7 +99,7 @@ PROMINENT_METRICS = {
         "thresholds": {"warning": 10, "critical": 50}
     },
     "jvm_gc_pause_seconds_sum": {
-        "title": "GC Pause (major)",
+        "title": "GC Pause (s)",
         "unit": "s",
         "format": "fixed2",
         "thresholds": {"warning": 1.0, "critical": 3.0}
@@ -138,7 +138,7 @@ PROMINENT_METRICS = {
 INITIAL_METRICS = [
     "tx_pool_size",
     "jetty_server_requests_seconds_avg",
-    "process_cpu_usage",
+    "system_cpu_usage",
     "postgres_locks",
     "jvm_gc_pause_seconds_sum",
     "postgres_connections",

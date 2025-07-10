@@ -67,7 +67,7 @@ class MetricsService:
         if MOCK_MODE:
             # Моковые данные для тестирования фронта
             mock_metrics = {
-                "process_cpu_usage": 0.75,
+                "system_cpu_usage": 0.75,
                 "postgres_connections": 68.0,
                 "postgres_locks": 1.0,
                 "jvm_gc_pause_seconds_sum": 21.743,
@@ -214,7 +214,7 @@ def get_metrics_history():
             # GC Pause - в секундах, обычно 0.1-50
             'jvm_gc_pause_seconds_sum': {'base': 21.743, 'range': 5, 'min': 15},
             # CPU Usage - процент, 0-1
-            'process_cpu_usage': {'base': 0.75, 'range': 0.2, 'min': 0.3},
+            'system_cpu_usage': {'base': 0.75, 'range': 0.2, 'min': 0.3},
             # System Load - обычно 0.1-5
             'system_load_average_1m': {'base': 0.82, 'range': 0.3, 'min': 0.4},
             # Transaction Pool - целые числа

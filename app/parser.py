@@ -88,11 +88,44 @@ def get_metric(metrics, name):
 
 def eval_formula(formula, metrics):
     """
-    Безопасно вычисляет формулу для KPI-метрик, поддерживает sum(...)
+    Безопасно вычисляет формулу для KPI-метрик, поддерживает sum(...) с лейблами
     """
     def sum_expr(name):
-        base_name = name.split('{')[0]
-        return sum(val for key, val in metrics.items() if key.startswith(base_name + '{'))
+        # Извлекаем базовое имя и лейблы из строки вида "metric_name{label1=\"value1\",label2=\"value2\"}"
+        if '{' in name:
+            base_name = name.split('{')[0]
+            label_str = name[name.find('{')+1:name.find('}')]
+            # Парсим лейблы
+            labels = {}
+            for pair in label_str.split(','):
+                if '=' in pair:
+                    key, value = pair.split('=', 1)
+                    labels[key.strip()] = value.strip().strip('"')
+            
+            # Ищем метрики с подходящими лейблами
+            total = 0.0
+            found = False
+            for key, val in metrics.items():
+                if not key.startswith(base_name + '{'):
+                    continue
+                # Проверяем лейблы
+                if '{' in key:
+                    key_label_str = key[key.find('{')+1:key.find('}')]
+                    key_labels = {}
+                    for pair in key_label_str.split(','):
+                        if '=' in pair:
+                            k, v = pair.split('=', 1)
+                            key_labels[k.strip()] = v.strip().strip('"')
+                    
+                    # Проверяем, что все требуемые лейблы совпадают
+                    if all(key_labels.get(lk) == lv for lk, lv in labels.items()):
+                        total += val
+                        found = True
+            return total if found else 0.0
+        else:
+            # Простая сумма без лейблов
+            return sum(val for key, val in metrics.items() if key.startswith(name + '{'))
+    
     try:
         modified_formula = formula.replace("sum(", "sum_expr(")
         result = eval(modified_formula, {"sum_expr": sum_expr})
@@ -101,7 +134,8 @@ def eval_formula(formula, metrics):
         return result
     except ZeroDivisionError:
         return 0.0
-    except Exception:
+    except Exception as e:
+        print(f"[DEBUG] eval_formula error for '{formula}': {e}")
         return 0.0
 
 def should_display_metric(metric_name, config):

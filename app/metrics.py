@@ -77,6 +77,15 @@ class MetricsService:
                 "postgres_rows_inserted_total": 1282731.0,
                 "tx_pool_size": 150.0,
                 "jetty_server_requests_seconds_avg": 0.045,
+                "jetty_server_requests_seconds_avg_get": 0.032,
+                "jetty_server_requests_seconds_avg_post": 0.078,
+                # Метрики для формул GET и POST
+                'jetty_server_requests_seconds_sum{outcome="SUCCESS",method="GET"}': 45.6,
+                'jetty_server_requests_seconds_count{outcome="SUCCESS",method="GET"}': 1420,
+                'jetty_server_requests_seconds_sum{outcome="SUCCESS",method="POST"}': 78.3,
+                'jetty_server_requests_seconds_count{outcome="SUCCESS",method="POST"}': 1005,
+                'jetty_server_requests_seconds_sum{outcome="SUCCESS"}': 123.9,
+                'jetty_server_requests_seconds_count{outcome="SUCCESS"}': 2425,
                 "postgres_connections{database=\"db01\"}": 68.0,
                 "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}": 192521736.0,
                 "postgres_locks{database=\"db01\"}": 1.0,
@@ -99,6 +108,10 @@ class MetricsService:
                 # Ищем значение в mock_metrics
                 if name in mock_metrics:
                     mock_prominent[name] = mock_metrics[name]
+                elif "formula" in config:
+                    # Вычисляем формулу для моковых данных
+                    value = eval_formula(config["formula"], mock_metrics)
+                    mock_prominent[name] = value
                 else:
                     # Если нет точного совпадения, ищем с лейблами
                     base_name = name.split('{')[0]
@@ -209,6 +222,10 @@ def get_metrics_history():
         base_values = {
             # API Response Time (avg) - в секундах, обычно 0.01-0.1
             'jetty_server_requests_seconds_avg': {'base': 0.045, 'range': 0.02, 'min': 0.01},
+            # GET Response Time (avg) - в секундах, обычно 0.01-0.1
+            'jetty_server_requests_seconds_avg_get': {'base': 0.032, 'range': 0.01, 'min': 0.02},
+            # POST Response Time (avg) - в секундах, обычно 0.05-0.2
+            'jetty_server_requests_seconds_avg_post': {'base': 0.078, 'range': 0.05, 'min': 0.06},
             # Jetty Requests Count - счетчик, растет
             'jetty_server_requests_seconds_count': {'base': 1234, 'range': 200, 'min': 1000},
             # GC Pause - в секундах, обычно 0.1-50

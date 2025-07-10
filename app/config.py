@@ -51,6 +51,8 @@ METRICS_CONFIG = [
         "category": "Jetty",
         "metrics": [
             'jetty_server_requests_seconds_avg',
+            'jetty_server_requests_seconds_avg_get',
+            'jetty_server_requests_seconds_avg_post',
             'jetty_connections_current_connections',
             'jetty_connections_bytes_in_bytes_sum',
             'jetty_connections_bytes_out_bytes_sum'
@@ -85,6 +87,20 @@ PROMINENT_METRICS = {
         "format": "fixed3",
         "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\"}))",
         "thresholds": {"warning": 0.5, "critical": 1.0}
+    },
+    "jetty_server_requests_seconds_avg_get": {
+        "title": "GET Avg Response Time",
+        "unit": "s",
+        "format": "fixed3",
+        "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\",method=\"GET\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\",method=\"GET\"}))",
+        "thresholds": {"warning": 0.3, "critical": 0.8}
+    },
+    "jetty_server_requests_seconds_avg_post": {
+        "title": "POST Avg Response Time",
+        "unit": "s",
+        "format": "fixed3",
+        "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\",method=\"POST\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\",method=\"POST\"}))",
+        "thresholds": {"warning": 0.5, "critical": 1.2}
     },
     "system_cpu_usage": {
         "title": "CPU Usage",
@@ -138,6 +154,8 @@ PROMINENT_METRICS = {
 INITIAL_METRICS = [
     "tx_pool_size",
     "jetty_server_requests_seconds_avg",
+    "jetty_server_requests_seconds_avg_get",
+    "jetty_server_requests_seconds_avg_post",
     "system_cpu_usage",
     "postgres_locks",
     "jvm_gc_pause_seconds_sum",

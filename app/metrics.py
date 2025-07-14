@@ -174,6 +174,20 @@ def update_metrics():
                     if should_display_metric(name, METRICS_CONFIG):
                         metrics_data["metrics"][name] = value
                         metrics_data["history"][name].append((now, value))
+                # === PATCH: добавляем историю для KPI-метрик (PROMINENT_METRICS) ===
+                for kpi_name, config in PROMINENT_METRICS.items():
+                    value = None
+                    norm_name = MetricKeyHelper.normalize(kpi_name)
+                    if norm_name in metrics_data["metrics"]:
+                        value = metrics_data["metrics"][norm_name]
+                    elif "formula" in config:
+                        value = eval_formula(config["formula"], metrics_data["metrics"])
+                    else:
+                        value = get_metric(metrics_data["metrics"], norm_name)
+                    if value is None:
+                        value = 0.0
+                    metrics_data["history"][kpi_name].append((now, value))
+                # === END PATCH ===
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
                 print(f"[DEBUG] update_metrics: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")

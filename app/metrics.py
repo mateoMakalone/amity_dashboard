@@ -65,65 +65,43 @@ class MetricsService:
     @staticmethod
     def get_metrics_data():
         if MOCK_MODE:
-            # Моковые данные для тестирования фронта
+            # Моковые данные, максимально приближённые к реальным prod-ответам
             mock_metrics = {
-                "system_cpu_usage": 0.75,
-                "postgres_connections": 68.0,
+                "jetty_server_requests_seconds_count": 270090.0,
+                "jetty_server_requests_seconds_count{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}": 270090.0,
+                "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}": 1.0,
+                "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}": 21253.0,
+                "jetty_server_requests_seconds_sum": 45577.570267428,
+                "jetty_server_requests_seconds_sum{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}": 45577.570267428,
+                "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}": 1.722175775,
+                "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}": 49272.573626984,
+                "jvm_gc_pause_seconds_sum": 2.065,
+                "jvm_memory_used_bytes": 24038272.0,
+                "postgres_connections": 66.0,
                 "postgres_locks": 1.0,
-                "jvm_gc_pause_seconds_sum": 21.743,
-                "jvm_memory_used_bytes": 192521736.0,
-                "system_load_average_1m": 0.82,
-                "jetty_server_requests_seconds_count": 1234.0,
-                "postgres_rows_inserted_total": 1282731.0,
-                "tx_pool_size": 150.0,
-                "jetty_server_requests_seconds_avg": 0.045,
-                "jetty_server_requests_seconds_avg_get": 0.032,
-                "jetty_server_requests_seconds_avg_post": 0.078,
-                # Метрики для формул GET и POST
-                'jetty_server_requests_seconds_sum{outcome="SUCCESS",method="GET"}': 45.6,
-                'jetty_server_requests_seconds_count{outcome="SUCCESS",method="GET"}': 1420,
-                'jetty_server_requests_seconds_sum{outcome="SUCCESS",method="POST"}': 78.3,
-                'jetty_server_requests_seconds_count{outcome="SUCCESS",method="POST"}': 1005,
-                'jetty_server_requests_seconds_sum{outcome="SUCCESS"}': 123.9,
-                'jetty_server_requests_seconds_count{outcome="SUCCESS"}': 2425,
-                "postgres_connections{database=\"db01\"}": 68.0,
-                "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}": 192521736.0,
-                "postgres_locks{database=\"db01\"}": 1.0,
-                "postgres_rows_inserted_total{database=\"db01\"}": 1282731.0,
-                "postgres_transactions_total{database=\"db01\"}": 45678.0,
-                "postgres_rows_updated_total{database=\"db01\"}": 23456.0,
-                "postgres_rows_deleted_total{database=\"db01\"}": 1234.0,
-                "postgres_blocks_reads_total{database=\"db01\"}": 98765.0,
-                "jvm_threads_live_threads": 45.0,
-                "jvm_classes_loaded_classes": 1234.0,
-                "jetty_connections_current_connections": 12.0,
-                "jetty_connections_bytes_in_bytes_sum": 1234567.0,
-                "jetty_connections_bytes_out_bytes_sum": 987654.0,
-                "system_cpu_count": 8.0
+                "postgres_rows_inserted_total": 1336082.0,
+                "system_cpu_usage": 0.06987864285714286,
+                "system_load_average_1m": 0.21,
+                "tx_pool_size": 0.0
             }
-            
-            # Создаем prominent на основе PROMINENT_METRICS
+            # prominent формируется по тем же правилам, что и в проде
             mock_prominent = {}
             for name, config in PROMINENT_METRICS.items():
-                # Ищем значение в mock_metrics
+                value = None
                 if name in mock_metrics:
-                    mock_prominent[name] = mock_metrics[name]
+                    value = mock_metrics[name]
                 elif "formula" in config:
-                    # Вычисляем формулу для моковых данных
                     value = eval_formula(config["formula"], mock_metrics)
-                    mock_prominent[name] = value
                 else:
-                    # Если нет точного совпадения, ищем с лейблами
                     base_name = name.split('{')[0]
-                    for key, value in mock_metrics.items():
+                    for key, v in mock_metrics.items():
                         if key.startswith(base_name + '{'):
-                            mock_prominent[name] = value
+                            value = v
                             break
-                    else:
-                        # Если не нашли, используем 0
-                        mock_prominent[name] = 0.0
-            
-            print("[DEBUG] MOCK MODE: returning test data")
+                if value is None:
+                    value = 0.0
+                mock_prominent[name] = value
+            print("[DEBUG] MOCK MODE: returning prod-like test data")
             return {"metrics": mock_metrics, "prominent": mock_prominent, "error": None}
         
         # Реальный режим

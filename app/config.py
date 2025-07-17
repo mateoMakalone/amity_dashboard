@@ -51,8 +51,8 @@ METRICS_CONFIG = [
         "category": "Jetty",
         "metrics": [
             'jetty_server_requests_seconds_avg',
-            'jetty_server_requests_seconds_avg_get',
-            'jetty_server_requests_seconds_avg_post',
+            'jetty_get_avg_time',
+            'jetty_post_avg_time',
             'jetty_connections_current_connections',
             'jetty_connections_bytes_in_bytes_sum',
             'jetty_connections_bytes_out_bytes_sum'
@@ -85,21 +85,18 @@ PROMINENT_METRICS = {
         "title": "API Response Time (avg)",
         "unit": "s",
         "format": "fixed3",
-        "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\"}))",
         "thresholds": {"warning": 0.5, "critical": 1.0}
     },
-    "jetty_server_requests_seconds_avg_get": {
+    "jetty_get_avg_time": {
         "title": "GET Avg Response Time",
         "unit": "s",
         "format": "fixed3",
-        "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\",method=\"GET\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\",method=\"GET\"}))",
         "thresholds": {"warning": 0.3, "critical": 0.8}
     },
-    "jetty_server_requests_seconds_avg_post": {
+    "jetty_post_avg_time": {
         "title": "POST Avg Response Time",
         "unit": "s",
         "format": "fixed3",
-        "formula": "(sum(jetty_server_requests_seconds_sum{outcome=\"SUCCESS\",method=\"POST\"}) / sum(jetty_server_requests_seconds_count{outcome=\"SUCCESS\",method=\"POST\"}))",
         "thresholds": {"warning": 0.5, "critical": 1.2}
     },
     "system_cpu_usage": {

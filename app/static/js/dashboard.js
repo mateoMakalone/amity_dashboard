@@ -699,6 +699,8 @@ const METRIC_LABELS = {
     },
     Jetty: {
         jetty_server_requests_seconds_avg: 'Avg Response Time',
+        jetty_get_avg_time: 'GET Avg Response Time',
+        jetty_post_avg_time: 'POST Avg Response Time',
         jetty_connections_current_connections: 'Current Connections',
         jetty_connections_bytes_in_bytes_sum: 'Bytes In',
         jetty_connections_bytes_out_bytes_sum: 'Bytes Out'
@@ -744,6 +746,8 @@ const METRIC_TOOLTIPS = {
     },
     Jetty: {
         jetty_server_requests_seconds_avg: 'Повтор KPI',
+        jetty_get_avg_time: 'Среднее время ответа GET. Рост = риск таймаутов.',
+        jetty_post_avg_time: 'Среднее время ответа POST. Рост = риск таймаутов.',
         jetty_connections_current_connections: 'Активные HTTP-соединения. Рост = API-нагрузка.',
         jetty_connections_bytes_in_bytes_sum: 'Суммарный входящий трафик.',
         jetty_connections_bytes_out_bytes_sum: 'Суммарный исходящий трафик.'
@@ -786,6 +790,8 @@ const DEFAULT_METRICS_CONFIG = [
     ], display: 'compact', color: '#27ae60', priority: 3 },
     { category: 'Jetty', metrics: [
         'jetty_server_requests_seconds_avg',
+        'jetty_get_avg_time',
+        'jetty_post_avg_time',
         'jetty_connections_current_connections',
         'jetty_connections_bytes_in_bytes_sum',
         'jetty_connections_bytes_out_bytes_sum'
@@ -807,7 +813,9 @@ const DEFAULT_PROMINENT_METRICS = {
     'jvm_memory_used_bytes{area="heap",id="Tenured Gen"}': { title: 'JVM Memory Used', unit: 'B', color: '#145a32', format: 'fixed0' },
     system_load_average_1m: { title: 'System Load (1m)', unit: '', color: '#145a32', format: 'fixed2' },
     jetty_server_requests_seconds_count: { title: 'Jetty Requests Count', unit: '', color: '#145a32', format: 'fixed0' },
-    'postgres_rows_inserted_total{database="db01"}': { title: 'Rows Inserted', unit: '', color: '#145a32', format: 'fixed0' }
+    'postgres_rows_inserted_total{database="db01"}': { title: 'Rows Inserted', unit: '', color: '#145a32', format: 'fixed0' },
+    jetty_get_avg_time: { title: 'GET Avg Response Time', unit: 's', color: '#145a32', format: 'fixed2' },
+    jetty_post_avg_time: { title: 'POST Avg Response Time', unit: 's', color: '#145a32', format: 'fixed2' }
 };
 
 function getEmptyDashboardData() {

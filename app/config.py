@@ -76,72 +76,72 @@ METRICS_CONFIG = [
 
 PROMINENT_METRICS = {
     "tx_pool_size": {
-        "title": "Transaction Pool",
+        "title": "Размер пула транзакций",
         "unit": "",
         "format": "fixed0",
         "thresholds": {"warning": 1000, "critical": 5000}
     },
     "jetty_server_requests_seconds_avg": {
-        "title": "API Response Time (avg)",
-        "unit": "s",
+        "title": "Среднее время ответа API, сек",
+        "unit": "с",
         "format": "fixed3",
         "thresholds": {"warning": 0.5, "critical": 1.0}
     },
     "jetty_get_avg_time": {
-        "title": "GET Avg Response Time",
-        "unit": "s",
+        "title": "Среднее время ответа (GET), сек",
+        "unit": "с",
         "format": "fixed3",
         "thresholds": {"warning": 0.3, "critical": 0.8}
     },
     "jetty_post_avg_time": {
-        "title": "POST Avg Response Time",
-        "unit": "s",
+        "title": "Среднее время ответа (POST), сек",
+        "unit": "с",
         "format": "fixed3",
         "thresholds": {"warning": 0.5, "critical": 1.2}
     },
     "system_cpu_usage": {
-        "title": "CPU Usage",
+        "title": "Загрузка CPU, %",
         "unit": "%",
-        "format": "fixed2",
-        "thresholds": {"warning": 0.85, "critical": 0.95}
+        "format": "percent",
+        "thresholds": {"warning": 85, "critical": 95}
+    },
+    "postgres_connections": {
+        "title": "Активные подключения к БД",
+        "unit": "",
+        "format": "fixed0",
+        "thresholds": {"warning": 100, "critical": 150}
     },
     "postgres_locks": {
-        "title": "Postgres Locks",
+        "title": "Активные блокировки в БД",
         "unit": "",
         "format": "fixed0",
         "thresholds": {"warning": 10, "critical": 50}
     },
     "jvm_gc_pause_seconds_sum": {
-        "title": "GC Pause (s)",
-        "unit": "s",
+        "title": "Время паузы GC, сек",
+        "unit": "с",
         "format": "fixed2",
         "thresholds": {"warning": 1.0, "critical": 3.0}
     },
-    "postgres_connections": {
-        "title": "DB Connections",
-        "unit": "",
-        "format": "fixed0",
-        "thresholds": {"warning": 100, "critical": 150}
-    },
     "jvm_memory_used_bytes": {
-        "title": "JVM Memory Used",
-        "unit": "B",
-        "format": "fixed0",
-        "thresholds": {"warning": 0.75, "critical": 0.9, "isRatio": True}
+        "title": "Используемая память JVM, MB",
+        "unit": "MB",
+        "format": "mb",
+        "thresholds": {"warning": 750, "critical": 900}
     },
     "system_load_average_1m": {
-        "title": "System Load (1m)",
+        "title": "Нагрузка системы (1 мин)",
         "unit": "",
         "format": "fixed2",
         "thresholds": {"warning": 2.0, "critical": 4.0}
     },
-    "jetty_server_requests_seconds_count": {
-        "title": "Jetty Requests Count",
+    "postgres_rows_inserted_total": {
+        "title": "Вставки в БД, всего",
         "unit": "",
         "format": "fixed0"
     },
-    "postgres_rows_inserted_total": {
-        "title": "Rows Inserted",
+    "postgres_blocks_reads_total": {
+        "title": "Прочтения блоков с диска",
         "unit": "",
         "format": "fixed0"
     }

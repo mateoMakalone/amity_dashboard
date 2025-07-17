@@ -5,7 +5,9 @@ const formatFunctions = {
     fixed0: x => x.toFixed(0),
     fixed2: x => x.toFixed(2),
     fixed3: x => x.toFixed(3),
-    roundFormat: x => Math.round(x).toLocaleString()
+    roundFormat: x => Math.round(x).toLocaleString(),
+    mb: x => (x / 1048576).toFixed(1),
+    percent: x => Math.round(x * 100)
 };
 
 /**
@@ -285,7 +287,13 @@ async function updateProminentMetrics(data) {
         // --- Исправление: всегда рендерим KPI, даже если нет данных ---
         const value = (typeof data.prominent[metricName] === 'number') ? data.prominent[metricName] : 0;
         const formatType = config.format || "fixed2";
-        const formatter = formatFunctions[formatType] || formatFunctions.fixed2;
+        // Форматирование значения с учетом типа метрики
+        let formatter = formatFunctions[formatType] || formatFunctions.fixed2;
+        if (metricName === 'jvm_memory_used_bytes') {
+            formatter = formatFunctions.mb;
+        } else if (metricName === 'process_cpu_usage') {
+            formatter = formatFunctions.percent;
+        }
         const formattedValue = formatter(value);
         const displayValue = `${formattedValue} ${config.unit || ""}`.trim();
         let card = existingCards[metricName];
@@ -668,47 +676,51 @@ function getMetricCategory(metricName, config) {
 // Красивые названия для метрик по секциям
 const METRIC_LABELS = {
     KPI: {
-        tx_pool_size: 'Transaction Pool',
-        jetty_server_requests_seconds_avg: 'API Response Time (avg)',
-        process_cpu_usage: 'CPU Usage',
-        jvm_gc_pause_seconds_sum: 'GC Pause (s)',
-        'postgres_connections{database="db01"}': 'DB Connections',
-        'postgres_locks{database="db01"}': 'Postgres Locks',
-        'jvm_memory_used_bytes{area="heap",id="Tenured Gen"}': 'JVM Memory Used',
-        system_load_average_1m: 'System Load (1m)',
+        tx_pool_size: 'Размер пула транзакций',
+        jetty_server_requests_seconds_avg: 'Среднее время ответа API, сек',
+        jetty_get_avg_time: 'Среднее время ответа (GET), сек',
+        jetty_post_avg_time: 'Среднее время ответа (POST), сек',
+        process_cpu_usage: 'Загрузка CPU, %',
+        jvm_gc_pause_seconds_sum: 'Время паузы GC, сек',
+        jvm_memory_used_bytes: 'Используемая память JVM, MB',
+        system_load_average_1m: 'Нагрузка системы (1 мин)',
         jetty_server_requests_seconds_count: 'Jetty Requests Count',
-        'postgres_rows_inserted_total{database="db01"}': 'Rows Inserted'
-    },
-    Transactions: {
-        'postgres_transactions_total{database="db01"}': 'Total Transactions',
-        'postgres_rows_updated_total{database="db01"}': 'Rows Updated',
-        'postgres_rows_deleted_total{database="db01"}': 'Rows Deleted'
-    },
-    PostgreSQL: {
-        'postgres_connections{database="db01"}': 'Active Connections',
-        'postgres_locks{database="db01"}': 'Active Locks',
-        'postgres_blocks_reads_total{database="db01"}': 'Blocks Read',
-        'postgres_rows_inserted_total{database="db01"}': 'Rows Inserted',
-        postgres_rows_updated_total: 'Rows Updated'
-    },
-    JVM: {
-        jvm_gc_pause_seconds_sum: 'GC Pause Time',
-        'jvm_memory_used_bytes{area="heap",id="Tenured Gen"}': 'Memory Used',
-        jvm_threads_live_threads: 'Live Threads',
-        jvm_classes_loaded_classes: 'Loaded Classes'
+        postgres_connections: 'Активные подключения к БД',
+        postgres_locks: 'Активные блокировки в БД',
+        postgres_rows_inserted_total: 'Вставки в БД, всего',
+        postgres_blocks_reads_total: 'Прочтения блоков с диска'
     },
     Jetty: {
-        jetty_server_requests_seconds_avg: 'Avg Response Time',
-        jetty_get_avg_time: 'GET Avg Response Time',
-        jetty_post_avg_time: 'POST Avg Response Time',
+        jetty_server_requests_seconds_avg: 'Среднее время ответа API, сек',
+        jetty_get_avg_time: 'Среднее время ответа (GET), сек',
+        jetty_post_avg_time: 'Среднее время ответа (POST), сек',
         jetty_connections_current_connections: 'Current Connections',
         jetty_connections_bytes_in_bytes_sum: 'Bytes In',
         jetty_connections_bytes_out_bytes_sum: 'Bytes Out'
     },
     System: {
-        process_cpu_usage: 'CPU Usage',
-        system_load_average_1m: 'Load Average (1m)',
+        process_cpu_usage: 'Загрузка CPU, %',
+        system_load_average_1m: 'Нагрузка системы (1 мин)',
         system_cpu_count: 'CPU Count'
+    },
+    PostgreSQL: {
+        postgres_connections: 'Активные подключения к БД',
+        postgres_locks: 'Активные блокировки в БД',
+        postgres_blocks_reads_total: 'Прочтения блоков с диска',
+        postgres_rows_inserted_total: 'Вставки в БД, всего',
+        postgres_rows_updated_total: 'Rows Updated',
+        postgres_transactions_total: 'Total Transactions'
+    },
+    JVM: {
+        jvm_gc_pause_seconds_sum: 'Время паузы GC, сек',
+        jvm_memory_used_bytes: 'Используемая память JVM, MB',
+        jvm_threads_live_threads: 'Live Threads',
+        jvm_classes_loaded_classes: 'Loaded Classes'
+    },
+    Transactions: {
+        postgres_transactions_total: 'Total Transactions',
+        postgres_rows_updated_total: 'Rows Updated',
+        postgres_rows_deleted_total: 'Rows Deleted'
     }
 };
 

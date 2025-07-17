@@ -166,6 +166,16 @@ def update_metrics():
                         value = 0.0
                     metrics_data["history"][kpi_name].append((now, value))
                 # === END PATCH ===
+                # === NEW PATCH: инициализация истории для всех метрик из конфигов ===
+                all_metric_names = set()
+                for category in METRICS_CONFIG:
+                    for pattern in category["metrics"]:
+                        all_metric_names.add(pattern)
+                all_metric_names.update(PROMINENT_METRICS.keys())
+                for metric_name in all_metric_names:
+                    if metric_name not in metrics_data["history"] or len(metrics_data["history"][metric_name]) == 0:
+                        metrics_data["history"][metric_name].append((now, 0.0))
+                # === END NEW PATCH ===
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
                 print(f"[DEBUG] update_metrics: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")

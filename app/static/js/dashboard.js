@@ -339,7 +339,8 @@ async function updateProminentMetrics(data) {
         if (colorClass) card.classList.add(colorClass);
         const plotDiv = card.querySelector('.metric-history-plot');
         if (plotDiv) {
-            if (value > 0) {
+            const hist = data.history && data.history[metricName];
+            if (hist && hist.length > 0) {
                 updateHistoryPlot(data.history, metricName, plotDiv, '#800000');
             } else {
                 plotDiv.innerHTML = '';
@@ -899,9 +900,9 @@ async function updateDashboard() {
         // Обновляем графики KPI-гистограмм
         console.log('[DEBUG] Updating KPI plots...');
         for (const metricName of Object.keys(data.prominent)) {
-            const value = (typeof data.prominent[metricName] === 'number') ? data.prominent[metricName] : 0;
             const plotDiv = document.getElementById(`plot-${metricName}`);
-            if (plotDiv && value > 0) {
+            const hist = data.history && data.history[metricName];
+            if (plotDiv && hist && hist.length > 0) {
                 updateHistoryPlot(data.history, metricName, plotDiv, '#800000');
             } else if (plotDiv) {
                 plotDiv.innerHTML = '';

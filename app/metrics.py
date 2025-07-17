@@ -110,6 +110,25 @@ class MetricsService:
             print(f"[DEBUG] get_metrics_data: error={error}")
             return {"metrics": {}, "prominent": {}, "error": error}
         metrics = MetricsService.normalize_metrics(raw_metrics)
+
+        # === PATCH: Явный расчет avg response time (без метода) ===
+        total_count = metrics.get('jetty_server_requests_seconds_count{outcome="SUCCESS",status="200"}')
+        total_sum = metrics.get('jetty_server_requests_seconds_sum{outcome="SUCCESS",status="200"}')
+        if total_count and total_sum and total_count > 0:
+            metrics['jetty_server_requests_seconds_avg'] = total_sum / total_count
+        # === END PATCH ===
+
+        # Аналогично get/post avg (оставляем как есть)
+        post_count = metrics.get('jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}')
+        post_sum = metrics.get('jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}')
+        if post_count and post_sum and post_count > 0:
+            metrics['jetty_post_avg_time'] = post_sum / post_count
+
+        get_count = metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}')
+        get_sum = metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}')
+        if get_count and get_sum and get_count > 0:
+            metrics['jetty_get_avg_time'] = get_sum / get_count
+
         prominent = {}
         for name, config in PROMINENT_METRICS.items():
             value = None

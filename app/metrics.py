@@ -170,31 +170,25 @@ def update_metrics():
                 for name, value in parsed.items():
                     if should_display_metric(name, METRICS_CONFIG):
                         metrics_data["metrics"][name] = value
-                        metrics_data["history"][name].append((now, value))
-                # === PATCH: добавляем историю для KPI-метрик (PROMINENT_METRICS) ===
-                for kpi_name, config in PROMINENT_METRICS.items():
+                # === NEW: обновляем историю только по ключам из PROMINENT_METRICS и METRICS_CONFIG ===
+                all_metric_names = set(PROMINENT_METRICS.keys())
+                for category in METRICS_CONFIG:
+                    for pattern in category["metrics"]:
+                        all_metric_names.add(pattern)
+                for metric_name in all_metric_names:
+                    # Получаем значение так же, как для отображения на фронте
                     value = None
-                    norm_name = MetricKeyHelper.normalize(kpi_name)
+                    norm_name = MetricKeyHelper.normalize(metric_name)
                     if norm_name in metrics_data["metrics"]:
                         value = metrics_data["metrics"][norm_name]
-                    elif "formula" in config:
-                        value = eval_formula(config["formula"], metrics_data["metrics"])
+                    elif "formula" in PROMINENT_METRICS.get(metric_name, {}):
+                        value = eval_formula(PROMINENT_METRICS[metric_name]["formula"], metrics_data["metrics"])
                     else:
                         value = get_metric(metrics_data["metrics"], norm_name)
                     if value is None:
                         value = 0.0
-                    metrics_data["history"][kpi_name].append((now, value))
-                # === END PATCH ===
-                # === NEW PATCH: инициализация истории для всех метрик из конфигов ===
-                all_metric_names = set()
-                for category in METRICS_CONFIG:
-                    for pattern in category["metrics"]:
-                        all_metric_names.add(pattern)
-                all_metric_names.update(PROMINENT_METRICS.keys())
-                for metric_name in all_metric_names:
-                    if metric_name not in metrics_data["history"] or len(metrics_data["history"][metric_name]) == 0:
-                        metrics_data["history"][metric_name].append((now, 0.0))
-                # === END NEW PATCH ===
+                    metrics_data["history"][metric_name].append((now, value))
+                # === END NEW ===
                 # === TEST LOGS: выводим состояние истории для диагностики ===
                 for test_metric in ["jetty_server_requests_seconds_avg", "postgres_connections"]:
                     hist = metrics_data["history"].get(test_metric)

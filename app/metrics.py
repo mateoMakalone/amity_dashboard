@@ -195,6 +195,14 @@ def update_metrics():
                     if metric_name not in metrics_data["history"] or len(metrics_data["history"][metric_name]) == 0:
                         metrics_data["history"][metric_name].append((now, 0.0))
                 # === END NEW PATCH ===
+                # === TEST LOGS: выводим состояние истории для диагностики ===
+                for test_metric in ["jetty_server_requests_seconds_avg", "postgres_connections"]:
+                    hist = metrics_data["history"].get(test_metric)
+                    if hist:
+                        print(f"[TEST] {test_metric}: history_len={len(hist)}, last={hist[-1]}")
+                    else:
+                        print(f"[TEST] {test_metric}: NO HISTORY")
+                # === END TEST LOGS ===
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
                 print(f"[DEBUG] update_metrics: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")

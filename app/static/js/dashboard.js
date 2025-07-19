@@ -80,6 +80,22 @@ function startHistoryPolling() {
 }
 
 /**
+ * Универсальная обработка истории по полным ключам (с лейблами)
+ * @param {any} rawData
+ * @returns {Array<[number, number]>}
+ */
+function processChartData(rawData) {
+    if (!rawData) return [];
+    if (Array.isArray(rawData) && rawData.length === 2 && typeof rawData[0] === 'number') {
+        return [rawData];
+    }
+    if (Array.isArray(rawData) && Array.isArray(rawData[0])) {
+        return rawData.filter(arr => arr.length === 2 && typeof arr[0] === 'number');
+    }
+    return [];
+}
+
+/**
  * Обновляет графики истории без пересоздания DOM
  * @param {object} historyData - данные истории
  * @param {string} metricName - имя метрики
@@ -92,7 +108,13 @@ function updateHistoryPlot(historyData, metricName, plotDiv, color = '#800000') 
         return;
     }
     
-    const data = historyData[metricName];
+    // Используем processChartData для универсального формата
+    const data = processChartData(historyData[metricName]);
+    if (!data.length) {
+        plotDiv.innerHTML = '';
+        return;
+    }
+    
     const x = data.map(([ts, _]) => new Date(ts * 1000));
     const y = data.map(([_, v]) => v);
     

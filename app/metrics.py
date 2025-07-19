@@ -32,6 +32,27 @@ def get_cached_data(fn, ttl=0.5, cache_key=None):
     _cache[key] = (value, now)
     return value
 
+def find_metric_value(metrics, key):
+    # Точное совпадение по ключу
+    if key in metrics:
+        return metrics[key]
+    # Если ключ с лейблами — ищем по base_name и лейблам
+    if '{' in key:
+        base = key.split('{')[0]
+        label_str = key[key.find('{')+1:key.find('}')]
+        labels = dict(pair.split('=') for pair in label_str.split(',') if '=' in pair)
+        labels = {k.strip(): v.strip().strip('"') for k, v in labels.items()}
+        for k, v in metrics.items():
+            if k.startswith(base + '{'):
+                k_label_str = k[k.find('{')+1:k.find('}')]
+                k_labels = dict(pair.split('=') for pair in k_label_str.split(',') if '=' in pair)
+                k_labels = {kk.strip(): vv.strip().strip('"') for kk, vv in k_labels.items()}
+                if labels == k_labels:
+                    return v
+    # Fallback на base_name
+    base = key.split('{')[0]
+    return metrics.get(base, 0)
+
 class MetricsService:
     @staticmethod
     def fetch_prometheus_metrics(url=METRICS_URL):
@@ -177,13 +198,7 @@ def update_metrics():
                         all_metric_names.add(pattern)
                 for metric_name in all_metric_names:
                     norm_name = MetricKeyHelper.normalize(metric_name)
-                    # Попробовать взять значение по norm_name, если нет — по base_name
-                    value = metrics_data["metrics"].get(norm_name)
-                    if value is None:
-                        base_name = norm_name.split('{')[0]
-                        value = metrics_data["metrics"].get(base_name)
-                    if value is None and "formula" in PROMINENT_METRICS.get(metric_name, {}):
-                        value = eval_formula(PROMINENT_METRICS[metric_name]["formula"], metrics_data["metrics"])
+                    value = find_metric_value(metrics_data["metrics"], norm_name)
                     if value is None:
                         value = 0.0
                     metrics_data["history"][norm_name].append((now, value))

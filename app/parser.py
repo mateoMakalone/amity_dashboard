@@ -1,6 +1,14 @@
 import re
 from app.utils_metric_key import MetricKeyHelper
 
+def normalize_metric_name(name, labels):
+    # Сортировка лейблов для консистентности
+    if not labels:
+        return name
+    sorted_labels = sorted(labels.items())
+    label_str = ','.join(f'{k}="{v}"' for k, v in sorted_labels)
+    return f'{name}{{{label_str}}}'
+
 def parse_metrics(text):
     metrics = {}
     current_metric = None
@@ -17,14 +25,18 @@ def parse_metrics(text):
                     name_part, value_part = line.split('}', 1)
                     name = name_part + '}'
                     value = float(value_part.strip())
+                    # Парсим лейблы
+                    base = name.split('{')[0].strip()
+                    label_str = name[name.find('{')+1:name.find('}')]
+                    labels = dict(pair.split('=') for pair in label_str.split(',') if '=' in pair)
+                    labels = {k.strip(): v.strip().strip('"') for k, v in labels.items()}
+                    norm_key = normalize_metric_name(base, labels)
+                    metrics[norm_key] = value
+                    metrics[base] = value
                 else:
                     name, value = line.rsplit(' ', 1)
                     value = float(value)
-                clean_key = MetricKeyHelper.normalize(name)
-                metrics[clean_key] = value
-                # Добавляем "чистый" ключ без лейблов
-                base_key = name.split('{')[0].strip()
-                metrics[base_key] = value
+                    metrics[name] = value
             except ValueError:
                 continue
     return metrics

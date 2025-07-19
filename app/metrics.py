@@ -187,7 +187,8 @@ def update_metrics():
                         value = get_metric(metrics_data["metrics"], norm_name)
                     if value is None:
                         value = 0.0
-                    metrics_data["history"][metric_name].append((now, value))
+                    # КЛЮЧЕВОЕ: история теперь по norm_name!
+                    metrics_data["history"][norm_name].append((now, value))
                 # === END NEW ===
                 # === TEST LOGS: выводим состояние истории для диагностики ===
                 for test_metric in ["jetty_server_requests_seconds_avg", "postgres_connections"]:

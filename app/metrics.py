@@ -176,18 +176,16 @@ def update_metrics():
                     for pattern in category["metrics"]:
                         all_metric_names.add(pattern)
                 for metric_name in all_metric_names:
-                    # Получаем значение так же, как для отображения на фронте
-                    value = None
                     norm_name = MetricKeyHelper.normalize(metric_name)
-                    if norm_name in metrics_data["metrics"]:
-                        value = metrics_data["metrics"][norm_name]
-                    elif "formula" in PROMINENT_METRICS.get(metric_name, {}):
+                    # Попробовать взять значение по norm_name, если нет — по base_name
+                    value = metrics_data["metrics"].get(norm_name)
+                    if value is None:
+                        base_name = norm_name.split('{')[0]
+                        value = metrics_data["metrics"].get(base_name)
+                    if value is None and "formula" in PROMINENT_METRICS.get(metric_name, {}):
                         value = eval_formula(PROMINENT_METRICS[metric_name]["formula"], metrics_data["metrics"])
-                    else:
-                        value = get_metric(metrics_data["metrics"], norm_name)
                     if value is None:
                         value = 0.0
-                    # КЛЮЧЕВОЕ: история теперь по norm_name!
                     metrics_data["history"][norm_name].append((now, value))
                 # === END NEW ===
                 # === TEST LOGS: выводим состояние истории для диагностики ===

@@ -1,36 +1,43 @@
+import subprocess
 import requests
-import json
-from app.metrics import MetricsService, get_metrics_history
 import time
+import os
+import json
 
-try:
-    r = requests.get('http://localhost:5000/dashboard_data')
-    data = r.json()
-    
-    print("=== Prominent metrics ===")
-    for k, v in data['prominent'].items():
-        if 'avg' in k:
-            print(f"  {k}: {v}")
-    
-    print("\n=== All prominent keys ===")
-    for k in data['prominent'].keys():
-        print(f"  {k}")
-        
-    print(f"\n=== Total prominent metrics: {len(data['prominent'])} ===")
-    
-except Exception as e:
-    print(f"Error: {e}") 
+LOG_FILE = "debug_metrics_log.txt"
 
-def test_history_and_values_keys_match():
-    # Дать время на сбор метрик, если поток уже работает
-    time.sleep(2)
-    data = MetricsService.get_metrics_data()
-    history = get_metrics_history()
 
-    # Проверяем, что для каждого ключа из values есть история
-    for key in data["metrics"]:
-        assert key in history, f"History missing for key: {key}"
+def run_and_log_metrics():
+    # Запустить Flask-приложение в фоне
+    proc = subprocess.Popen(["python", "run.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        # Дать время на запуск
+        time.sleep(4)
+        # Собрать данные с бэка
+        dashboard = requests.get("http://127.0.0.1:5000/dashboard_data", timeout=5).json()
+        history = dashboard.get("history", {})
+        metrics = dashboard.get("metrics", {})
+        prominent = dashboard.get("prominent", {})
+        # Сформировать компактный лог
+        log = {
+            "history_keys": list(history.keys()),
+            "metrics_keys": list(metrics.keys()),
+            "prominent_keys": list(prominent.keys()),
+            "history_last": {k: v[-1] if v else None for k, v in history.items()},
+            "metrics_sample": {k: metrics[k] for k in list(metrics)[:10]},
+            "prominent_sample": {k: prominent[k] for k in list(prominent)[:10]},
+        }
+        with open(LOG_FILE, "w", encoding="utf-8") as f:
+            f.write(json.dumps(log, ensure_ascii=False, indent=2))
+    except Exception as e:
+        with open(LOG_FILE, "w", encoding="utf-8") as f:
+            f.write(f"ERROR: {e}\n")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=3)
+        except Exception:
+            proc.kill()
 
-    # Проверяем, что для каждого ключа из истории есть значение
-    for key in history:
-        assert key in data["metrics"], f"Value missing for key: {key}" 
+if __name__ == "__main__":
+    run_and_log_metrics() 

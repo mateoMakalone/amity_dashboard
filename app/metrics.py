@@ -1,4 +1,3 @@
-import requests
 import threading
 import time
 import os
@@ -54,20 +53,6 @@ def find_metric_value(metrics, key):
     return metrics.get(base, 0)
 
 class MetricsService:
-    @staticmethod
-    def fetch_prometheus_metrics(url=METRICS_URL):
-        """
-        Загружает метрики с Prometheus endpoint
-        """
-        def fetch():
-            try:
-                response = requests.get(url, timeout=REQUEST_TIMEOUT)
-                response.raise_for_status()
-                return response.text, None
-            except Exception as e:
-                return None, str(e)
-        return get_cached_data(fetch, ttl=0.5, cache_key='prometheus_metrics')
-
     @staticmethod
     def normalize_metrics(raw_metrics):
         """
@@ -210,10 +195,10 @@ class MetricsService:
             return {"metrics": mock_metrics, "prominent": mock_prominent, "error": None}
         
         # Реальный режим
-        raw_metrics, error = MetricsService.fetch_prometheus_metrics(METRICS_URL)
-        if error:
-            print(f"[DEBUG] get_metrics_data: error={error}")
-            return {"metrics": {}, "prominent": {}, "error": error}
+        # raw_metrics, error = MetricsService.fetch_prometheus_metrics(METRICS_URL)
+        # if error:
+        #     print(f"[DEBUG] get_metrics_data: error={error}")
+        #     return {"metrics": {}, "prominent": {}, "error": error}
         metrics = MetricsService.normalize_metrics(raw_metrics)
 
         # === PATCH: Явный расчет avg response time (без метода) ===

@@ -87,36 +87,6 @@ def test_metric_history():
         print(f"❌ Ошибка API истории метрики: {e}")
         return False
 
-def test_prometheus_proxy():
-    """Тестирует прокси-эндпоинт Prometheus"""
-    print("\n🔍 Тестирование прокси Prometheus...")
-    
-    try:
-        # Тестовый запрос
-        params = {
-            'query': 'system_cpu_usage',
-            'start': str(int(time.time()) - 300),  # 5 минут назад
-            'end': str(int(time.time())),
-            'step': '30'
-        }
-        
-        response = requests.get(f"{BASE_URL}/api/prometheus/query_range", params=params, timeout=10)
-        response.raise_for_status()
-        
-        data = response.json()
-        print(f"✅ Прокси Prometheus работает")
-        print(f"   - Статус: {data.get('status', 'unknown')}")
-        
-        if data.get('data') and data['data'].get('result'):
-            result = data['data']['result'][0]
-            print(f"   - Точки данных: {len(result.get('values', []))}")
-        
-        return True
-        
-    except Exception as e:
-        print(f"❌ Ошибка прокси Prometheus: {e}")
-        return False
-
 def test_main_page():
     """Тестирует главную страницу"""
     print("\n🔍 Тестирование главной страницы...")
@@ -207,7 +177,6 @@ def main():
         test_sections_config,
         test_section_metrics,
         test_metric_history,
-        test_prometheus_proxy,
         test_main_page,
         test_debug_mode,
         test_metrics_data

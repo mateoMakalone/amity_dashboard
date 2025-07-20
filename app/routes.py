@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, jsonify, request
 import requests
 import time
 from .metrics import MetricsService, get_metrics_history
-from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, PROMETHEUS_URL, MOCK_MODE, KPI_METRICS_CONFIG
+from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, MOCK_MODE, KPI_METRICS_CONFIG
 from app.metrics_collector import METRIC_HISTORY, metrics_data
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -80,7 +80,7 @@ def dashboard_data():
             "error": f"Failed to load dashboard data: {str(e)}"
         }), 500
 
-# Удалён эндпоинт /api/prometheus/query_range и все обращения к PROMETHEUS_URL, query_range, requests.get(...prometheus...)
+# Удалены все строки, связанные с prometheus_url, requests.get(prometheus_url, ...), и любые упоминания query_range
 
 @dashboard_bp.route("/api/sections")
 def sections_config():
@@ -155,11 +155,11 @@ def metric_history(metric_id):
             return generate_mock_prometheus_data(metric_config['promql'], str(start_time), str(now), str(step))
         
         # Делаем запрос к Prometheus
-        prometheus_url = f"{PROMETHEUS_URL}/api/v1/query_range"
-        response = requests.get(prometheus_url, params=params, timeout=10)
-        response.raise_for_status()
+        # prometheus_url = f"{PROMETHEUS_URL}/api/v1/query_range"
+        # response = requests.get(prometheus_url, params=params, timeout=10)
+        # response.raise_for_status()
         
-        return jsonify(response.json())
+        # return jsonify(response.json())
         
     except Exception as e:
         return jsonify({

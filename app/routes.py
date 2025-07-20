@@ -50,10 +50,6 @@ def dashboard():
 def data():
     return jsonify(MetricsService.get_metrics_data())
 
-@dashboard_bp.route("/history")
-def history():
-    return jsonify(get_metrics_history())
-
 @dashboard_bp.route("/dashboard_data")
 def dashboard_data():
     try:
@@ -143,13 +139,12 @@ def sections_config():
     """
     Возвращает конфигурацию секций метрик
     """
-    print("[DEBUG] /api/sections called - simplified version")
+    print("[DEBUG] /api/sections called - real config")
     return jsonify({
         "status": "ok",
-        "message": "Sections endpoint works",
-        "sections": {"KPI": ["metric1", "metric2"]},
-        "all_metrics": {"test": {"label": "Test"}},
-        "time_intervals": [{"value": 30, "label": "30 минут"}]
+        "sections": SECTIONS,
+        "all_metrics": ALL_METRICS,
+        "time_intervals": TIME_INTERVALS
     })
 
 @dashboard_bp.route("/api/test")
@@ -231,36 +226,6 @@ def metric_history(metric_id):
         return jsonify({
             "status": "error",
             "error": f"Failed to get metric history: {str(e)}"
-        }), 500
-
-@dashboard_bp.route("/api/sections/<section_name>/metrics")
-def section_metrics(section_name):
-    """
-    Возвращает метрики для конкретной секции
-    """
-    try:
-        if section_name not in SECTIONS:
-            return jsonify({
-                "status": "error",
-                "error": f"Section '{section_name}' not found"
-            }), 404
-        
-        section_metrics = SECTIONS[section_name]
-        metrics_data = {}
-        
-        for metric_id in section_metrics:
-            if metric_id in ALL_METRICS:
-                metrics_data[metric_id] = ALL_METRICS[metric_id]
-        
-        return jsonify({
-            "section": section_name,
-            "metrics": metrics_data
-        })
-        
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "error": f"Failed to get section metrics: {str(e)}"
         }), 500
 
 def generate_mock_prometheus_data(query, start, end, step):

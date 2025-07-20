@@ -2,7 +2,6 @@
 
 # Моковый режим для тестирования фронта
 MOCK_MODE = True
-print(f"[INFO] MOCK MODE = {MOCK_MODE}")
 
 METRICS_URL = "http://server:5110/metrics"
 UPDATE_INTERVAL = 1.0
@@ -41,14 +40,9 @@ SECTIONS = {
     "PostgreSQL": [
         "postgres_connections",
         "postgres_locks",
-        "postgres_blocks_reads_total",
-        "postgres_rows_inserted_total",
-        "postgres_rows_updated_total",
-        "postgres_transactions_total"
+        "postgres_blocks_reads_total"
     ],
     "JVM": [
-        "jvm_gc_pause_seconds_sum",
-        "jvm_memory_used_bytes",
         "jvm_threads_live_threads",
         "jvm_classes_loaded_classes"
     ],
@@ -109,7 +103,7 @@ ALL_METRICS = {
         "label": "Используемая память JVM",
         "promql": 'jvm_memory_used_bytes{area="heap",id="Tenured Gen"} / 1024 / 1024',
         "type": "trend+bar",
-        "unit": "MB",
+        "unit": "МБ",
         "color": "#27ae60",
         "format": "fixed1",
         "thresholds": {"warning": 750, "critical": 900}
@@ -161,7 +155,7 @@ ALL_METRICS = {
     },
     "postgres_transactions_total": {
         "label": "Транзакции PostgreSQL",
-        "promql": 'postgres_transactions_total{database="db01"}',
+        "promql": 'rate(postgres_transactions_total{database="db01"}[1m])',
         "type": "trend",
         "unit": "",
         "color": "#8e44ad",
@@ -169,7 +163,7 @@ ALL_METRICS = {
     },
     "postgres_rows_inserted_total": {
         "label": "Вставки в БД",
-        "promql": 'postgres_rows_inserted_total{database="db01"}',
+        "promql": 'rate(postgres_rows_inserted_total{database="db01"}[1m])',
         "type": "trend",
         "unit": "",
         "color": "#27ae60",
@@ -177,7 +171,7 @@ ALL_METRICS = {
     },
     "postgres_rows_updated_total": {
         "label": "Обновления в БД",
-        "promql": 'postgres_rows_updated_total{database="db01"}',
+        "promql": 'rate(postgres_rows_updated_total{database="db01"}[1m])',
         "type": "trend",
         "unit": "",
         "color": "#f39c12",
@@ -185,7 +179,7 @@ ALL_METRICS = {
     },
     "postgres_rows_deleted_total": {
         "label": "Удаления из БД",
-        "promql": 'postgres_rows_deleted_total{database="db01"}',
+        "promql": 'rate(postgres_rows_deleted_total{database="db01"}[1m])',
         "type": "trend",
         "unit": "",
         "color": "#e74c3c",
@@ -193,7 +187,7 @@ ALL_METRICS = {
     },
     "postgres_blocks_reads_total": {
         "label": "Прочтения блоков с диска",
-        "promql": 'postgres_blocks_reads_total{database="db01"}',
+        "promql": 'rate(postgres_blocks_reads_total{database="db01"}[1m])',
         "type": "trend",
         "unit": "",
         "color": "#3498db",
@@ -270,13 +264,37 @@ ALL_METRICS = {
         "unit": "",
         "color": "#95a5a6",
         "format": "fixed0"
+    },
+    "jvm_gc_pause_seconds_sum": {
+        "label": "Суммарное время пауз GC (JVM)",
+        "promql": "jvm_gc_pause_seconds_sum",
+        "type": "trend+bar",
+        "unit": "сек",
+        "color": "#34495e",
+        "format": "fixed2"
+    },
+    "jvm_memory_used_bytes": {
+        "label": "Используемая память JVM (байт)",
+        "promql": 'jvm_memory_used_bytes{area="heap",id="Tenured Gen"}',
+        "type": "trend+bar",
+        "unit": "МБ",
+        "color": "#27ae60",
+        "format": "fixed1"
+    },
+    "system_load_average_1m": {
+        "label": "Нагрузка системы (1 мин)",
+        "promql": "system_load_average_1m",
+        "type": "trend+bar",
+        "unit": "",
+        "color": "#95a5a6",
+        "format": "fixed2"
     }
 }
 
 # Конфигурация KPI-метрик для модернизированного дашборда (для обратной совместимости)
 KPI_METRICS_CONFIG = [
     {
-        "id": "api_response_time",
+        "id": "avg_response_time_api",
         "title": "Среднее время ответа API",
         "promql": 'avg(rate(jetty_server_requests_seconds_sum{outcome="SUCCESS",status="200"}[1m])) / avg(rate(jetty_server_requests_seconds_count{outcome="SUCCESS",status="200"}[1m]))',
         "unit": "сек",
@@ -303,7 +321,7 @@ KPI_METRICS_CONFIG = [
         "thresholds": {"warning": 0.5, "critical": 1.2}
     },
     {
-        "id": "cpu_usage",
+        "id": "system_cpu_usage",
         "title": "Загрузка CPU",
         "promql": 'system_cpu_usage',
         "unit": "%",
@@ -312,10 +330,10 @@ KPI_METRICS_CONFIG = [
         "thresholds": {"warning": 85, "critical": 95}
     },
     {
-        "id": "memory_usage",
+        "id": "jvm_memory_used",
         "title": "Используемая память JVM",
         "promql": 'jvm_memory_used_bytes{area="heap",id="Tenured Gen"} / 1024 / 1024',
-        "unit": "MB",
+        "unit": "МБ",
         "color": "#27ae60",
         "format": "fixed1",
         "thresholds": {"warning": 750, "critical": 900}

@@ -81,9 +81,10 @@ function initControls() {
     const intervalSelect = document.getElementById('time-interval');
     if (intervalSelect) {
         intervalSelect.value = currentInterval;
-        intervalSelect.addEventListener('change', (e) => {
+        intervalSelect.addEventListener('change', async (e) => {
             currentInterval = parseInt(e.target.value);
-            loadSectionsData();
+            await loadSectionsData();
+            startAutoUpdate(); // Перезапуск таймера после смены интервала
         });
     }
     
@@ -327,6 +328,17 @@ function createMetricCard(metricId, data, error) {
     const history = data.history;
     const debug = data.debug;
     
+    // Проверка на отсутствие данных
+    if (!history || !history.result || history.result.length === 0 || !history.result[0].values || history.result[0].values.length === 0) {
+        card.innerHTML = `
+            <div class="metric-header">
+                <h4 class="metric-title">${config.label || metricId}</h4>
+            </div>
+            <div class="metric-error">Нет данных за выбранный период</div>
+        `;
+        return card;
+    }
+    
     // Определяем статус
     const status = getMetricStatus(config, history);
     
@@ -383,32 +395,10 @@ function createMetricCard(metricId, data, error) {
         chartsContainer.appendChild(barChart);
     }
     
-    // Собираем карточку
     card.appendChild(header);
     card.appendChild(chartsContainer);
     
-    // Debug-информация
-    if (debugMode && debug) {
-        const debugInfo = document.createElement('div');
-        debugInfo.className = 'debug-info';
-        
-        const historyData = debug.data?.result?.[0]?.values || [];
-        const values = historyData.map(([_, v]) => v).filter(v => v !== null && v !== undefined);
-        
-        const min = values.length > 0 ? Math.min(...values) : 'N/A';
-        const max = values.length > 0 ? Math.max(...values) : 'N/A';
-        const count = values.length;
-        
-        debugInfo.innerHTML = `
-            <strong>Debug Info:</strong><br>
-            <pre>JSON: ${JSON.stringify(debug, null, 2)}</pre>
-            <strong>Stats:</strong> min: ${min}, max: ${max}, count: ${count}
-        `;
-        
-        card.appendChild(debugInfo);
-    }
-    
-    // Рендерим графики
+    // Рендерим графики (Plotly) всегда, если есть данные
     if (history && history.result && history.result.length > 0) {
         const result = history.result[0];
         if (result.values && result.values.length > 0) {
@@ -419,6 +409,23 @@ function createMetricCard(metricId, data, error) {
                 renderBarChart(config, result.values, `bar-${metricId}`);
             }
         }
+    }
+    
+    // Debug-информация (только после графиков, не прерывает выполнение)
+    if (debugMode && debug) {
+        const debugInfo = document.createElement('div');
+        debugInfo.className = 'debug-info';
+        const historyData = debug.data?.result?.[0]?.values || [];
+        const values = historyData.map(([_, v]) => v).filter(v => v !== null && v !== undefined);
+        const min = values.length > 0 ? Math.min(...values) : 'N/A';
+        const max = values.length > 0 ? Math.max(...values) : 'N/A';
+        const count = values.length;
+        debugInfo.innerHTML = `
+            <strong>Debug Info:</strong><br>
+            <pre>JSON: ${JSON.stringify(debug, null, 2)}</pre>
+            <strong>Stats:</strong> min: ${min}, max: ${max}, count: ${count}
+        `;
+        card.appendChild(debugInfo);
     }
     
     return card;
@@ -510,14 +517,14 @@ function renderTrendChart(config, values, containerId) {
             showgrid: false,
             tickformat: '%H:%M',
             tickangle: 0,
-            tickfont: { size: 10 }
+            tickfont: { size: 12 }
         },
         yaxis: {
             showgrid: true,
             zeroline: false,
-            tickfont: { size: 10 },
+            tickfont: { size: 12 },
             title: config.unit,
-            titlefont: { size: 10 }
+            titlefont: { size: 12 }
         },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
@@ -565,16 +572,16 @@ function renderBarChart(config, values, containerId) {
         height: 150,
         xaxis: {
             showgrid: false,
-            tickfont: { size: 10 },
+            tickfont: { size: 12 },
             title: config.unit,
-            titlefont: { size: 10 }
+            titlefont: { size: 12 }
         },
         yaxis: {
             showgrid: true,
             zeroline: false,
-            tickfont: { size: 10 },
+            tickfont: { size: 12 },
             title: 'Количество',
-            titlefont: { size: 10 }
+            titlefont: { size: 12 }
         },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',

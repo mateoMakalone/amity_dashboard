@@ -1,3 +1,5 @@
+import os
+
 # Удалён DEBUG_MODE и print
 
 # Моковый режим для тестирования фронта
@@ -410,3 +412,6 @@ INITIAL_METRICS = [
     'jetty_connections_bytes_out_bytes_sum',
     'system_cpu_count'
 ]
+
+SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 1))  # по умолчанию 1 секунда
+METRIC_HISTORY_SECONDS = int(os.getenv("METRIC_HISTORY_SECONDS", 3600))  # 1 час

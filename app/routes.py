@@ -3,6 +3,7 @@ import requests
 import time
 from .metrics import MetricsService, get_metrics_history
 from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, PROMETHEUS_URL, MOCK_MODE, KPI_METRICS_CONFIG
+from app.metrics_collector import METRIC_HISTORY
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -213,6 +214,28 @@ def metric_history(metric_id):
             "error": f"Failed to get metric history: {str(e)}"
         }), 500
 
+@dashboard_bp.route("/api/history")
+def metric_history_api():
+    metric = request.args.get("metric")
+    if not metric:
+        return jsonify({"status": "error", "error": "no metric"}), 400
+    values = METRIC_HISTORY.get(metric, [])
+    result = {
+        "status": "success",
+        "data": {
+            "result": [{
+                "metric": {"__name__": metric},
+                "values": [[ts, str(v)] for ts, v in values]
+            }]
+        }
+    }
+    return jsonify(result)
+
+@dashboard_bp.route("/export")
+def export_report():
+    stats = {name: calc_metric_stats(METRIC_HISTORY[name]) for name in METRIC_HISTORY}
+    return render_template("report.html", stats=stats, history=METRIC_HISTORY)
+
 def generate_mock_prometheus_data(query, start, end, step):
     """
     Генерирует моковые данные для Prometheus query_range в MOCK_MODE
@@ -302,3 +325,13 @@ def generate_mock_prometheus_data(query, start, end, step):
             "status": "error",
             "error": f"Mock data generation failed: {str(e)}"
         }), 500
+
+def calc_metric_stats(values):
+    if not values:
+        return {"start": 0, "max": 0, "avg": 0}
+    vals = [v for (_, v) in values]
+    return {
+        "start": vals[0],
+        "max": max(vals),
+        "avg": sum(vals) / len(vals)
+    }

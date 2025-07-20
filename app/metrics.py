@@ -112,12 +112,6 @@ class MetricsService:
 def update_metrics():
     print("[DEBUG] update_metrics: поток сбора метрик стартовал")
     
-    # В MOCK_MODE не делаем запросы к внешнему серверу
-    if MOCK_MODE:
-        print("[DEBUG] MOCK_MODE: skipping external metrics collection")
-        while True:
-            time.sleep(UPDATE_INTERVAL)
-    
     while True:
         try:
             start_time = time.time()
@@ -176,90 +170,6 @@ def get_metrics_history():
     """
     Возвращает историю метрик
     """
-    if MOCK_MODE:
-        # Моковая история для тестирования
-        import time
-        import random
-        now = time.time()
-        mock_history = {}
-        
-        # Собираем все метрики, для которых нужна история
-        all_metrics = set()
-        
-        # Добавляем метрики из prominent
-        for config in KPI_METRICS_CONFIG:
-            all_metrics.add(config["id"])
-        
-        # Добавляем метрики из SECTIONS
-        for category_name, metrics_list in SECTIONS.items():
-            for metric_name in metrics_list:
-                all_metrics.add(metric_name)
-        
-        # Базовые значения для разных типов метрик
-        base_values = {
-            # API Response Time (avg) - в секундах, обычно 0.01-0.1
-            'jetty_server_requests_seconds_avg': {'base': 0.045, 'range': 0.02, 'min': 0.01},
-            # GET Response Time (avg) - в секундах, обычно 0.01-0.1
-            'jetty_server_requests_seconds_avg_get': {'base': 0.032, 'range': 0.01, 'min': 0.02},
-            # POST Response Time (avg) - в секундах, обычно 0.05-0.2
-            'jetty_server_requests_seconds_avg_post': {'base': 0.078, 'range': 0.05, 'min': 0.06},
-            # Jetty Requests Count - счетчик, растет
-            'jetty_server_requests_seconds_count': {'base': 1234, 'range': 200, 'min': 1000},
-            # GC Pause - в секундах, обычно 0.1-50
-            'jvm_gc_pause_seconds_sum': {'base': 21.743, 'range': 5, 'min': 15},
-            # CPU Usage - процент, 0-1
-            'system_cpu_usage': {'base': 0.75, 'range': 0.2, 'min': 0.3},
-            # System Load - обычно 0.1-5
-            'system_load_average_1m': {'base': 0.82, 'range': 0.3, 'min': 0.4},
-            # Transaction Pool - целые числа
-            'tx_pool_size': {'base': 150, 'range': 30, 'min': 100},
-            # PostgreSQL connections
-            'postgres_connections': {'base': 68, 'range': 15, 'min': 50},
-            # PostgreSQL locks
-            'postgres_locks': {'base': 1, 'range': 3, 'min': 0},
-            # Memory usage - в байтах, большие числа
-            'jvm_memory_used_bytes': {'base': 192521736, 'range': 50000000, 'min': 150000000},
-            # Rows inserted - счетчик, растет
-            'postgres_rows_inserted_total': {'base': 1282731, 'range': 100000, 'min': 1200000},
-        }
-        
-        # Создаем моковую историю для всех метрик
-        for metric_name in all_metrics:
-            mock_history[metric_name] = []
-            
-            # Определяем базовые параметры для метрики
-            if metric_name in base_values:
-                config = base_values[metric_name]
-                base_val = config['base']
-                range_val = config['range']
-                min_val = config['min']
-            else:
-                # Для неизвестных метрик используем общие параметры
-                base_val = 100
-                range_val = 50
-                min_val = 50
-            
-            # Создаем историю с реалистичными изменениями
-            current_val = base_val
-            for i in range(20):
-                timestamp = now - (20 - i) * 5  # 5 секунд между точками
-                
-                # Добавляем случайные колебания
-                change = (random.random() - 0.5) * range_val * 0.1  # ±10% от диапазона
-                current_val += change
-                
-                # Обеспечиваем минимальные значения
-                current_val = max(current_val, min_val)
-                
-                # Для счетчиков (count, total) значения только растут
-                if 'count' in metric_name or 'total' in metric_name:
-                    current_val = max(current_val, base_val + i * range_val * 0.05)
-                
-                mock_history[metric_name].append([timestamp, round(current_val, 3)])
-        
-        print(f"[DEBUG] MOCK MODE: returning test history for {len(mock_history)} metrics")
-        return mock_history
-    
     with lock:
         return {name: list(history) for name, history in metrics_data["history"].items()}
 

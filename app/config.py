@@ -3,7 +3,7 @@ import os
 # Удалён DEBUG_MODE и print
 
 # Моковый режим для тестирования фронта
-MOCK_MODE = True
+# MOCK_MODE = True
 
 METRICS_URL = "http://server:5110/metrics"
 UPDATE_INTERVAL = 1.0
@@ -412,5 +412,4 @@ INITIAL_METRICS = [
     'system_cpu_count'
 ]
 
-SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 1))  # по умолчанию 1 секунда
 METRIC_HISTORY_SECONDS = int(os.getenv("METRIC_HISTORY_SECONDS", 3600))  # 1 час

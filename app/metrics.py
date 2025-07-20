@@ -1,9 +1,10 @@
 import threading
 import time
+import requests
 import os
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric, filter_metric, sum_metric, get_metric, eval_formula
-from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, HISTORY_LENGTH, KPI_METRICS_CONFIG, ALL_METRICS, INITIAL_METRICS, MOCK_MODE, SECTIONS
+from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, KPI_METRICS_CONFIG, ALL_METRICS, INITIAL_METRICS, SECTIONS
 from app.utils_metric_key import MetricKeyHelper
 
 HISTORY_SECONDS = 3600  # 1 час
@@ -70,174 +71,44 @@ class MetricsService:
 
     @staticmethod
     def get_metrics_data():
-        if MOCK_MODE:
-            # Моковые данные, максимально приближённые к реальным prod-ответам
-            mock_metrics = {
-                # Базовые метрики Jetty
-                "jetty_server_requests_seconds_count": 270090.0,
-                "jetty_server_requests_seconds_count{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}": 270090.0,
-                "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}": 1.0,
-                "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}": 21253.0,
-                "jetty_server_requests_seconds_sum": 45577.570267428,
-                "jetty_server_requests_seconds_sum{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}": 45577.570267428,
-                "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}": 1.722175775,
-                "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}": 49272.573626984,
-                
-                # Вычисленные средние значения
-                "jetty_server_requests_seconds_avg": 0.045,
-                "jetty_get_avg_time": 0.032,
-                "jetty_post_avg_time": 0.078,
-                
-                # Системные метрики
-                "jvm_gc_pause_seconds_sum": 2.065,
-                "jvm_memory_used_bytes": 24038272.0,
-                "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}": 24038272.0,
-                "system_cpu_usage": 0.06987864285714286,
-                "system_load_average_1m": 0.21,
-                "system_cpu_count": 8.0,
-                
-                # PostgreSQL метрики
-                "postgres_connections": 66.0,
-                "postgres_connections{database=\"db01\"}": 66.0,
-                "postgres_locks": 1.0,
-                "postgres_locks{database=\"db01\"}": 1.0,
-                "postgres_rows_inserted_total": 1336082.0,
-                "postgres_rows_inserted_total{database=\"db01\"}": 1336082.0,
-                "postgres_transactions_total": 5000.0,
-                "postgres_transactions_total{database=\"db01\"}": 5000.0,
-                "postgres_rows_updated_total": 2000.0,
-                "postgres_rows_updated_total{database=\"db01\"}": 2000.0,
-                "postgres_rows_deleted_total": 100.0,
-                "postgres_rows_deleted_total{database=\"db01\"}": 100.0,
-                "postgres_blocks_reads_total": 50000.0,
-                "postgres_blocks_reads_total{database=\"db01\"}": 50000.0,
-                
-                # JVM метрики
-                "jvm_threads_live_threads": 45.0,
-                "jvm_classes_loaded_classes": 8000.0,
-                
-                # Jetty метрики
-                "jetty_connections_current_connections": 25.0,
-                "jetty_connections_bytes_in_bytes_sum": 1000000.0,
-                "jetty_connections_bytes_out_bytes_sum": 2000000.0,
-                
-                # Транзакции
-                "tx_pool_size": 150.0
-            }
-            # prominent формируется по тем же правилам, что и в проде
-            mock_prominent = {}
-            for config in KPI_METRICS_CONFIG:
-                name = config["id"]
-                value = None
-                
-                # Специальная обработка для KPI метрик
-                if name == "api_response_time":
-                    # Вычисляем среднее время ответа API
-                    total_count = mock_metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}', 0)
-                    total_sum = mock_metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}', 0)
-                    if total_count > 0:
-                        value = total_sum / total_count
-                    else:
-                        value = 0.045  # fallback
-                        
-                elif name == "get_response_time":
-                    # Время ответа GET запросов
-                    get_count = mock_metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}', 0)
-                    get_sum = mock_metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}', 0)
-                    if get_count > 0:
-                        value = get_sum / get_count
-                    else:
-                        value = 0.032  # fallback
-                        
-                elif name == "post_response_time":
-                    # Время ответа POST запросов
-                    post_count = mock_metrics.get('jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}', 0)
-                    post_sum = mock_metrics.get('jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}', 0)
-                    if post_count > 0:
-                        value = post_sum / post_count
-                    else:
-                        value = 0.078  # fallback
-                        
-                elif name == "cpu_usage":
-                    # Загрузка CPU (конвертируем в проценты)
-                    value = mock_metrics.get("system_cpu_usage", 0.07) * 100
-                    
-                elif name == "memory_usage":
-                    # Используемая память JVM (конвертируем в MB)
-                    value = mock_metrics.get("jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}", 24038272.0) / 1024 / 1024
-                    
-                elif name == "postgres_connections":
-                    # Активные подключения к БД
-                    value = mock_metrics.get("postgres_connections{database=\"db01\"}", 66.0)
-                    
-                elif name == "postgres_locks":
-                    # Активные блокировки в БД
-                    value = mock_metrics.get("postgres_locks{database=\"db01\"}", 1.0)
-                    
-                elif name == "gc_pause_time":
-                    # Время паузы GC
-                    value = mock_metrics.get("jvm_gc_pause_seconds_sum", 2.065)
-                    
-                elif name == "system_load":
-                    # Нагрузка системы (1 мин)
-                    value = mock_metrics.get("system_load_average_1m", 0.21)
-                    
-                elif name == "tx_pool_size":
-                    # Размер пула транзакций
-                    value = mock_metrics.get("tx_pool_size", 150.0)
-                    
-                else:
-                    # Fallback для неизвестных метрик
-                    value = 0.0
-                    
-                mock_prominent[name] = value
-            print("[DEBUG] MOCK MODE: returning prod-like test data")
-            return {"metrics": mock_metrics, "prominent": mock_prominent, "error": None}
-        
-        # Реальный режим
-        # raw_metrics, error = MetricsService.fetch_prometheus_metrics(METRICS_URL)
-        # if error:
-        #     print(f"[DEBUG] get_metrics_data: error={error}")
-        #     return {"metrics": {}, "prominent": {}, "error": error}
-        metrics = MetricsService.normalize_metrics(raw_metrics)
+        # Получаем текущие метрики и ошибку из глобальных данных
+        with lock:
+            current_metrics = dict(metrics_data["metrics"])
+            error = metrics_data["last_error"]
+        # Вычисляем среднее время ответа (get/post)
+        get_count = current_metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}', 0.0)
+        post_count = current_metrics.get('jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}', 0.0)
+        total_count = get_count + post_count
+        get_sum = current_metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}', 0.0)
+        post_sum = current_metrics.get('jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}', 0.0)
+        total_sum = get_sum + post_sum
+        if total_count > 0:
+            current_metrics['jetty_server_requests_seconds_avg'] = total_sum / total_count
+        if get_count > 0:
+            current_metrics['jetty_get_avg_time'] = get_sum / get_count
+        if post_count > 0:
+            current_metrics['jetty_post_avg_time'] = post_sum / post_count
 
-        # === PATCH: Явный расчет avg response time (без метода) ===
-        total_count = metrics.get('jetty_server_requests_seconds_count{outcome="SUCCESS",status="200"}')
-        total_sum = metrics.get('jetty_server_requests_seconds_sum{outcome="SUCCESS",status="200"}')
-        if total_count and total_sum and total_count > 0:
-            metrics['jetty_server_requests_seconds_avg'] = total_sum / total_count
-        # === END PATCH ===
-
-        # Аналогично get/post avg (оставляем как есть)
-        post_count = metrics.get('jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}')
-        post_sum = metrics.get('jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}')
-        if post_count and post_sum and post_count > 0:
-            metrics['jetty_post_avg_time'] = post_sum / post_count
-
-        get_count = metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}')
-        get_sum = metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}')
-        if get_count and get_sum and get_count > 0:
-            metrics['jetty_get_avg_time'] = get_sum / get_count
-
+        # Составляем KPI-метрики на основе конфигурации
         prominent = {}
         for config in KPI_METRICS_CONFIG:
             name = config["id"]
-            value = None
             norm_name = MetricKeyHelper.normalize(name)
-            if norm_name in metrics:
-                value = metrics[norm_name]
+            if norm_name in current_metrics:
+                value = current_metrics[norm_name]
             elif "formula" in config:
-                value = eval_formula(config["formula"], metrics)
+                value = eval_formula(config["formula"], current_metrics)
             else:
-                value = get_metric(metrics, norm_name)
+                value = get_metric(current_metrics, norm_name)
             if value is None:
                 value = 0.0
             prominent[name] = value
-        # DEBUG LOG
-        print("[DEBUG] get_metrics_data: prominent=", prominent)
-        print("[DEBUG] get_metrics_data: metrics keys=", list(metrics.keys()))
-        print("[DEBUG] get_metrics_data: error=", error)
-        return {"metrics": metrics, "prominent": prominent, "error": None}
+        return {"metrics": current_metrics, "prominent": prominent, "error": error}
+
+    @staticmethod
+    def get_metrics_history():
+        with lock:
+            return {name: list(history) for name, history in metrics_data["history"].items()}
 
 def update_metrics():
     print("[DEBUG] update_metrics: поток сбора метрик стартовал")

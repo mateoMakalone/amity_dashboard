@@ -1,9 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
-import requests
 import time
-from .metrics import MetricsService, get_metrics_history
-from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, MOCK_MODE, KPI_METRICS_CONFIG
-from app.metrics_collector import METRIC_HISTORY, metrics_data
+from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, KPI_METRICS_CONFIG
+from app.metrics_collector import metrics_data
 
 dashboard_bp = Blueprint("dashboard", __name__)
 

@@ -2,9 +2,6 @@ import os
 
 # Удалён DEBUG_MODE и print
 
-# Моковый режим для тестирования фронта
-# MOCK_MODE = True
-
 METRICS_URL = "http://server:5110/metrics"
 UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0
@@ -388,22 +385,22 @@ KPI_METRICS_CONFIG = [
 
 # Список всех метрик для инициализации
 INITIAL_METRICS = [
-    "tx_pool_size",
-    "jetty_server_requests_seconds_avg",
-    "jetty_server_requests_seconds_avg_get",
-    "jetty_server_requests_seconds_avg_post",
-    "system_cpu_usage",
-    "postgres_locks",
-    "jvm_gc_pause_seconds_sum",
-    "postgres_connections",
-    "jvm_memory_used_bytes",
-    "system_load_average_1m",
-    "jetty_server_requests_seconds_count",
-    "postgres_rows_inserted_total",
-    'postgres_transactions_total{database="db01"}',
-    'postgres_rows_updated_total{database="db01"}',
-    'postgres_rows_deleted_total{database="db01"}',
-    'postgres_blocks_reads_total{database="db01"}',
+    'tx_pool_size',
+    'jetty_server_requests_seconds_avg',
+    'jetty_server_requests_seconds_avg_get',
+    'jetty_server_requests_seconds_avg_post',
+    'system_cpu_usage',
+    'postgres_locks',
+    'jvm_gc_pause_seconds_sum',
+    'postgres_connections',
+    'jvm_memory_used_bytes',
+    'system_load_average_1m',
+    'jetty_server_requests_seconds_count',
+    'postgres_rows_inserted_total',
+    'postgres_transactions_total',
+    'postgres_rows_updated_total',
+    'postgres_rows_deleted_total',
+    'postgres_blocks_reads_total',
     'jvm_threads_live_threads',
     'jvm_classes_loaded_classes',
     'jetty_connections_current_connections',

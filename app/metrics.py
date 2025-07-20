@@ -1,6 +1,5 @@
 import threading
 import time
-import requests
 import os
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric, filter_metric, sum_metric, get_metric, eval_formula

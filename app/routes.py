@@ -3,7 +3,7 @@ import requests
 import time
 from .metrics import MetricsService, get_metrics_history
 from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, PROMETHEUS_URL, MOCK_MODE, KPI_METRICS_CONFIG
-from app.metrics_collector import METRIC_HISTORY
+from app.metrics_collector import METRIC_HISTORY, metrics_data
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -80,54 +80,7 @@ def dashboard_data():
             "error": f"Failed to load dashboard data: {str(e)}"
         }), 500
 
-@dashboard_bp.route("/api/prometheus/query_range")
-def prometheus_query_range():
-    """
-    Прокси-эндпоинт для запросов к Prometheus query_range API
-    """
-    try:
-        # Получаем параметры из запроса
-        query = request.args.get('query')
-        start = request.args.get('start')
-        end = request.args.get('end')
-        step = request.args.get('step')
-        
-        if not all([query, start, end, step]):
-            return jsonify({
-                "status": "error",
-                "error": "Missing required parameters: query, start, end, step"
-            }), 400
-        
-        # В MOCK_MODE возвращаем тестовые данные
-        if MOCK_MODE:
-            return generate_mock_prometheus_data(query, start, end, step)
-        
-        # Формируем URL для запроса к Prometheus
-        prometheus_url = f"{PROMETHEUS_URL}/api/v1/query_range"
-        params = {
-            'query': query,
-            'start': start,
-            'end': end,
-            'step': step
-        }
-        
-        # Делаем запрос к Prometheus
-        response = requests.get(prometheus_url, params=params, timeout=10)
-        response.raise_for_status()
-        
-        # Возвращаем ответ как есть
-        return jsonify(response.json())
-        
-    except requests.exceptions.RequestException as e:
-        return jsonify({
-            "status": "error",
-            "error": f"Prometheus request failed: {str(e)}"
-        }), 500
-    except Exception as e:
-        return jsonify({
-            "status": "error", 
-            "error": f"Internal error: {str(e)}"
-        }), 500
+# Удалён эндпоинт /api/prometheus/query_range и все обращения к PROMETHEUS_URL, query_range, requests.get(...prometheus...)
 
 @dashboard_bp.route("/api/sections")
 def sections_config():
@@ -219,13 +172,13 @@ def metric_history_api():
     metric = request.args.get("metric")
     if not metric:
         return jsonify({"status": "error", "error": "no metric"}), 400
-    values = METRIC_HISTORY.get(metric, [])
+    values = metrics_data["history"].get(metric, [])
     result = {
         "status": "success",
         "data": {
             "result": [{
                 "metric": {"__name__": metric},
-                "values": [[ts, str(v)] for ts, v in values]
+                "values": [[d["ts"], str(d["value"])] for d in values]
             }]
         }
     }
@@ -233,8 +186,8 @@ def metric_history_api():
 
 @dashboard_bp.route("/export")
 def export_report():
-    stats = {name: calc_metric_stats(METRIC_HISTORY[name]) for name in METRIC_HISTORY}
-    return render_template("report.html", stats=stats, history=METRIC_HISTORY)
+    stats = {name: calc_metric_stats(metrics_data["history"][name]) for name in metrics_data["history"]}
+    return render_template("report.html", stats=stats, history=metrics_data["history"])
 
 def generate_mock_prometheus_data(query, start, end, step):
     """
@@ -329,7 +282,7 @@ def generate_mock_prometheus_data(query, start, end, step):
 def calc_metric_stats(values):
     if not values:
         return {"start": 0, "max": 0, "avg": 0}
-    vals = [v for (_, v) in values]
+    vals = [d["value"] for d in values]
     return {
         "start": vals[0],
         "max": max(vals),

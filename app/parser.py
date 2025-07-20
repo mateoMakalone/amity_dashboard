@@ -157,3 +157,17 @@ def should_display_metric(metric_name, config):
             if re.fullmatch(pattern, base_name):
                 return True
     return False
+
+def parse_prometheus_text(text):
+    result = {}
+    for line in text.splitlines():
+        if line.startswith("#") or not line.strip():
+            continue
+        parts = line.strip().split(" ")
+        if len(parts) == 2:
+            key, val = parts
+            try:
+                result[key] = float(val)
+            except ValueError:
+                continue
+    return result

@@ -10,8 +10,7 @@ UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0
 HISTORY_LENGTH = 60
 
-# URL для Prometheus API
-PROMETHEUS_URL = "http://prometheus:9090"
+# Удалена переменная PROMETHEUS_URL и связанные строки
 
 # Доступные интервалы времени для графиков (в минутах)
 TIME_INTERVALS = [

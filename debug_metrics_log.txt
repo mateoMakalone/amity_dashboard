@@ -1,0 +1,341 @@
+{
+  "history_keys": [
+    "jetty_connections_bytes_in_bytes_sum",
+    "jetty_connections_bytes_out_bytes_sum",
+    "jetty_connections_current_connections",
+    "jetty_get_avg_time",
+    "jetty_post_avg_time",
+    "jetty_server_requests_seconds_avg",
+    "jvm_classes_loaded_classes",
+    "jvm_gc_pause_seconds_sum",
+    "jvm_memory_used_bytes",
+    "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}",
+    "jvm_threads_live_threads",
+    "postgres_blocks_reads_total",
+    "postgres_blocks_reads_total{database=\"db01\"}",
+    "postgres_connections",
+    "postgres_connections{database=\"db01\"}",
+    "postgres_locks",
+    "postgres_locks{database=\"db01\"}",
+    "postgres_rows_deleted_total{database=\"db01\"}",
+    "postgres_rows_inserted_total",
+    "postgres_rows_inserted_total{database=\"db01\"}",
+    "postgres_rows_updated_total",
+    "postgres_rows_updated_total{database=\"db01\"}",
+    "postgres_transactions_total",
+    "postgres_transactions_total{database=\"db01\"}",
+    "process_cpu_usage",
+    "system_cpu_count",
+    "system_cpu_usage",
+    "system_load_average_1m",
+    "tx_pool_size"
+  ],
+  "metrics_keys": [
+    "jetty_connections_bytes_in_bytes_count",
+    "jetty_connections_bytes_in_bytes_count{connector_name=\"unnamed\"}",
+    "jetty_connections_bytes_in_bytes_max",
+    "jetty_connections_bytes_in_bytes_max{connector_name=\"unnamed\"}",
+    "jetty_connections_bytes_in_bytes_sum",
+    "jetty_connections_bytes_in_bytes_sum{connector_name=\"unnamed\"}",
+    "jetty_connections_bytes_out_bytes_count",
+    "jetty_connections_bytes_out_bytes_count{connector_name=\"unnamed\"}",
+    "jetty_connections_bytes_out_bytes_max",
+    "jetty_connections_bytes_out_bytes_max{connector_name=\"unnamed\"}",
+    "jetty_connections_bytes_out_bytes_sum",
+    "jetty_connections_bytes_out_bytes_sum{connector_name=\"unnamed\"}",
+    "jetty_connections_current_connections",
+    "jetty_connections_current_connections{connector_name=\"unnamed\"}",
+    "jetty_connections_max_connections",
+    "jetty_connections_max_connections{connector_name=\"unnamed\"}",
+    "jetty_connections_messages_in_messages_total",
+    "jetty_connections_messages_in_messages_total{connector_name=\"unnamed\"}",
+    "jetty_connections_messages_out_messages_total",
+    "jetty_connections_messages_out_messages_total{connector_name=\"unnamed\"}",
+    "jetty_connections_request_seconds_count",
+    "jetty_connections_request_seconds_count{connector_name=\"unnamed\",type=\"server\"}",
+    "jetty_connections_request_seconds_max",
+    "jetty_connections_request_seconds_max{connector_name=\"unnamed\",type=\"server\"}",
+    "jetty_connections_request_seconds_sum",
+    "jetty_connections_request_seconds_sum{connector_name=\"unnamed\",type=\"server\"}",
+    "jetty_get_avg_time",
+    "jetty_post_avg_time",
+    "jetty_server_async_dispatches_total",
+    "jetty_server_async_expires_total",
+    "jetty_server_async_waits_operations",
+    "jetty_server_dispatches_open_seconds_active_count",
+    "jetty_server_dispatches_open_seconds_duration_sum",
+    "jetty_server_dispatches_open_seconds_max",
+    "jetty_server_requests_seconds_count",
+    "jetty_server_requests_seconds_count{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}",
+    "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}",
+    "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}",
+    "jetty_server_requests_seconds_max",
+    "jetty_server_requests_seconds_max{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}",
+    "jetty_server_requests_seconds_max{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}",
+    "jetty_server_requests_seconds_max{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}",
+    "jetty_server_requests_seconds_sum",
+    "jetty_server_requests_seconds_sum{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}",
+    "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}",
+    "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}",
+    "jvm_buffer_count_buffers",
+    "jvm_buffer_count_buffers{id=\"direct\"}",
+    "jvm_buffer_count_buffers{id=\"mapped - 'non-volatile memory'\"}",
+    "jvm_buffer_count_buffers{id=\"mapped\"}",
+    "jvm_buffer_memory_used_bytes",
+    "jvm_buffer_memory_used_bytes{id=\"direct\"}",
+    "jvm_buffer_memory_used_bytes{id=\"mapped - 'non-volatile memory'\"}",
+    "jvm_buffer_memory_used_bytes{id=\"mapped\"}",
+    "jvm_buffer_total_capacity_bytes",
+    "jvm_buffer_total_capacity_bytes{id=\"direct\"}",
+    "jvm_buffer_total_capacity_bytes{id=\"mapped - 'non-volatile memory'\"}",
+    "jvm_buffer_total_capacity_bytes{id=\"mapped\"}",
+    "jvm_classes_loaded_classes",
+    "jvm_classes_unloaded_classes_total",
+    "jvm_gc_live_data_size_bytes",
+    "jvm_gc_max_data_size_bytes",
+    "jvm_gc_memory_allocated_bytes_total",
+    "jvm_gc_memory_promoted_bytes_total",
+    "jvm_gc_pause_seconds_count",
+    "jvm_gc_pause_seconds_count{action=\"end of major GC\",cause=\"Allocation Failure\",gc=\"MarkSweepCompact\"}",
+    "jvm_gc_pause_seconds_count{action=\"end of minor GC\",cause=\"Allocation Failure\",gc=\"Copy\"}",
+    "jvm_gc_pause_seconds_max",
+    "jvm_gc_pause_seconds_max{action=\"end of major GC\",cause=\"Allocation Failure\",gc=\"MarkSweepCompact\"}",
+    "jvm_gc_pause_seconds_max{action=\"end of minor GC\",cause=\"Allocation Failure\",gc=\"Copy\"}",
+    "jvm_gc_pause_seconds_sum",
+    "jvm_gc_pause_seconds_sum{action=\"end of major GC\",cause=\"Allocation Failure\",gc=\"MarkSweepCompact\"}",
+    "jvm_gc_pause_seconds_sum{action=\"end of minor GC\",cause=\"Allocation Failure\",gc=\"Copy\"}",
+    "jvm_memory_committed_bytes",
+    "jvm_memory_committed_bytes{area=\"heap\",id=\"Eden Space\"}",
+    "jvm_memory_committed_bytes{area=\"heap\",id=\"Survivor Space\"}",
+    "jvm_memory_committed_bytes{area=\"heap\",id=\"Tenured Gen\"}",
+    "jvm_memory_committed_bytes{area=\"nonheap\",id=\"CodeHeap 'non-nmethods'\"}",
+    "jvm_memory_committed_bytes{area=\"nonheap\",id=\"CodeHeap 'non-profiled nmethods'\"}",
+    "jvm_memory_committed_bytes{area=\"nonheap\",id=\"CodeHeap 'profiled nmethods'\"}",
+    "jvm_memory_committed_bytes{area=\"nonheap\",id=\"Compressed Class Space\"}",
+    "jvm_memory_committed_bytes{area=\"nonheap\",id=\"Metaspace\"}",
+    "jvm_memory_max_bytes",
+    "jvm_memory_max_bytes{area=\"heap\",id=\"Eden Space\"}",
+    "jvm_memory_max_bytes{area=\"heap\",id=\"Survivor Space\"}",
+    "jvm_memory_max_bytes{area=\"heap\",id=\"Tenured Gen\"}",
+    "jvm_memory_max_bytes{area=\"nonheap\",id=\"CodeHeap 'non-nmethods'\"}",
+    "jvm_memory_max_bytes{area=\"nonheap\",id=\"CodeHeap 'non-profiled nmethods'\"}",
+    "jvm_memory_max_bytes{area=\"nonheap\",id=\"CodeHeap 'profiled nmethods'\"}",
+    "jvm_memory_max_bytes{area=\"nonheap\",id=\"Compressed Class Space\"}",
+    "jvm_memory_max_bytes{area=\"nonheap\",id=\"Metaspace\"}",
+    "jvm_memory_used_bytes",
+    "jvm_memory_used_bytes{area=\"heap\",id=\"Eden Space\"}",
+    "jvm_memory_used_bytes{area=\"heap\",id=\"Survivor Space\"}",
+    "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}",
+    "jvm_memory_used_bytes{area=\"nonheap\",id=\"CodeHeap 'non-nmethods'\"}",
+    "jvm_memory_used_bytes{area=\"nonheap\",id=\"CodeHeap 'non-profiled nmethods'\"}",
+    "jvm_memory_used_bytes{area=\"nonheap\",id=\"CodeHeap 'profiled nmethods'\"}",
+    "jvm_memory_used_bytes{area=\"nonheap\",id=\"Compressed Class Space\"}",
+    "jvm_memory_used_bytes{area=\"nonheap\",id=\"Metaspace\"}",
+    "jvm_threads_daemon_threads",
+    "jvm_threads_live_threads",
+    "jvm_threads_peak_threads",
+    "jvm_threads_started_threads_total",
+    "jvm_threads_states_threads",
+    "jvm_threads_states_threads{state=\"blocked\"}",
+    "jvm_threads_states_threads{state=\"new\"}",
+    "jvm_threads_states_threads{state=\"runnable\"}",
+    "jvm_threads_states_threads{state=\"terminated\"}",
+    "jvm_threads_states_threads{state=\"timed-waiting\"}",
+    "jvm_threads_states_threads{state=\"waiting\"}",
+    "postgres_blocks_hits_total",
+    "postgres_blocks_hits_total{database=\"db01\"}",
+    "postgres_blocks_reads_total",
+    "postgres_blocks_reads_total{database=\"db01\"}",
+    "postgres_buffers_backend_total",
+    "postgres_buffers_backend_total{database=\"db01\"}",
+    "postgres_buffers_checkpoint_total",
+    "postgres_buffers_checkpoint_total{database=\"db01\"}",
+    "postgres_buffers_clean_total",
+    "postgres_buffers_clean_total{database=\"db01\"}",
+    "postgres_checkpoints_requested_total",
+    "postgres_checkpoints_requested_total{database=\"db01\"}",
+    "postgres_checkpoints_timed_total",
+    "postgres_checkpoints_timed_total{database=\"db01\"}",
+    "postgres_connections",
+    "postgres_connections{database=\"db01\"}",
+    "postgres_locks",
+    "postgres_locks{database=\"db01\"}",
+    "postgres_rows_dead",
+    "postgres_rows_dead{database=\"db01\"}",
+    "postgres_rows_deleted_total",
+    "postgres_rows_deleted_total{database=\"db01\"}",
+    "postgres_rows_fetched_total",
+    "postgres_rows_fetched_total{database=\"db01\"}",
+    "postgres_rows_inserted_total",
+    "postgres_rows_inserted_total{database=\"db01\"}",
+    "postgres_rows_updated_total",
+    "postgres_rows_updated_total{database=\"db01\"}",
+    "postgres_size",
+    "postgres_size{database=\"db01\"}",
+    "postgres_temp_writes_bytes_total",
+    "postgres_temp_writes_bytes_total{database=\"db01\"}",
+    "postgres_transactions_total",
+    "postgres_transactions_total{database=\"db01\"}",
+    "process_cpu_usage",
+    "system_cpu_count",
+    "system_cpu_usage",
+    "system_load_average_1m",
+    "tx_pool_size"
+  ],
+  "prominent_keys": [
+    "jetty_get_avg_time",
+    "jetty_post_avg_time",
+    "jetty_server_requests_seconds_avg",
+    "jvm_gc_pause_seconds_sum",
+    "jvm_memory_used_bytes",
+    "postgres_blocks_reads_total",
+    "postgres_connections",
+    "postgres_locks",
+    "postgres_rows_inserted_total",
+    "system_cpu_usage",
+    "system_load_average_1m",
+    "tx_pool_size"
+  ],
+  "history_last": {
+    "jetty_connections_bytes_in_bytes_sum": [
+      1752943276.8819695,
+      520989569.0
+    ],
+    "jetty_connections_bytes_out_bytes_sum": [
+      1752943276.8819695,
+      3873226948.0
+    ],
+    "jetty_connections_current_connections": [
+      1752943276.8819695,
+      2.0
+    ],
+    "jetty_get_avg_time": [
+      1752943276.8819695,
+      0
+    ],
+    "jetty_post_avg_time": [
+      1752943276.8819695,
+      0
+    ],
+    "jetty_server_requests_seconds_avg": [
+      1752943276.8819695,
+      0
+    ],
+    "jvm_classes_loaded_classes": [
+      1752943276.8819695,
+      10678.0
+    ],
+    "jvm_gc_pause_seconds_sum": [
+      1752943276.8819695,
+      2.065
+    ],
+    "jvm_memory_used_bytes": [
+      1752943276.8819695,
+      0
+    ],
+    "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}": [
+      1752943276.8819695,
+      0
+    ],
+    "jvm_threads_live_threads": [
+      1752943276.8819695,
+      40.0
+    ],
+    "postgres_blocks_reads_total": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_blocks_reads_total{database=\"db01\"}": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_connections": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_connections{database=\"db01\"}": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_locks": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_locks{database=\"db01\"}": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_rows_deleted_total{database=\"db01\"}": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_rows_inserted_total": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_rows_inserted_total{database=\"db01\"}": [
+      1752943276.8819695,
+      0
+    ],
+    "postgres_rows_updated_total": [
+      1752943276.8819695,
+      6643290.0
+    ],
+    "postgres_rows_updated_total{database=\"db01\"}": [
+      1752943276.8819695,
+      6643290.0
+    ],
+    "postgres_transactions_total": [
+      1752943276.8819695,
+      54138900.0
+    ],
+    "postgres_transactions_total{database=\"db01\"}": [
+      1752943276.8819695,
+      54138900.0
+    ],
+    "process_cpu_usage": [
+      1752943276.8819695,
+      0.04081632653061224
+    ],
+    "system_cpu_count": [
+      1752943276.8819695,
+      1.0
+    ],
+    "system_cpu_usage": [
+      1752943276.8819695,
+      0
+    ],
+    "system_load_average_1m": [
+      1752943276.8819695,
+      0.14
+    ],
+    "tx_pool_size": [
+      1752943276.8819695,
+      0
+    ]
+  },
+  "metrics_sample": {
+    "jetty_connections_bytes_in_bytes_count": 237739.0,
+    "jetty_connections_bytes_in_bytes_count{connector_name=\"unnamed\"}": 237739.0,
+    "jetty_connections_bytes_in_bytes_max": 1664.0,
+    "jetty_connections_bytes_in_bytes_max{connector_name=\"unnamed\"}": 1664.0,
+    "jetty_connections_bytes_in_bytes_sum": 520989569.0,
+    "jetty_connections_bytes_in_bytes_sum{connector_name=\"unnamed\"}": 520989569.0,
+    "jetty_connections_bytes_out_bytes_count": 237739.0,
+    "jetty_connections_bytes_out_bytes_count{connector_name=\"unnamed\"}": 237739.0,
+    "jetty_connections_bytes_out_bytes_max": 218.0,
+    "jetty_connections_bytes_out_bytes_max{connector_name=\"unnamed\"}": 218.0
+  },
+  "prominent_sample": {
+    "jetty_get_avg_time": 0.19682075691629686,
+    "jetty_post_avg_time": 2.274860926626965,
+    "jetty_server_requests_seconds_avg": 0,
+    "jvm_gc_pause_seconds_sum": 2.065,
+    "jvm_memory_used_bytes": 24255872.0,
+    "postgres_blocks_reads_total": 168108.0,
+    "postgres_connections": 67.0,
+    "postgres_locks": 1.0,
+    "postgres_rows_inserted_total": 1410072.0,
+    "system_cpu_usage": 0.0242572
+  }
+}

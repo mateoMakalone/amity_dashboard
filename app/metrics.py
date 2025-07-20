@@ -4,7 +4,7 @@ import time
 import os
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric, filter_metric, sum_metric, get_metric, eval_formula
-from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, HISTORY_LENGTH, METRICS_CONFIG, PROMINENT_METRICS, INITIAL_METRICS, MOCK_MODE
+from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, HISTORY_LENGTH, KPI_METRICS_CONFIG, ALL_METRICS, INITIAL_METRICS, MOCK_MODE, SECTIONS
 from app.utils_metric_key import MetricKeyHelper
 
 HISTORY_SECONDS = 3600  # 1 час
@@ -88,6 +88,7 @@ class MetricsService:
         if MOCK_MODE:
             # Моковые данные, максимально приближённые к реальным prod-ответам
             mock_metrics = {
+                # Базовые метрики Jetty
                 "jetty_server_requests_seconds_count": 270090.0,
                 "jetty_server_requests_seconds_count{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}": 270090.0,
                 "jetty_server_requests_seconds_count{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}": 1.0,
@@ -96,31 +97,114 @@ class MetricsService:
                 "jetty_server_requests_seconds_sum{method=\"GET\",outcome=\"SUCCESS\",status=\"200\"}": 45577.570267428,
                 "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SERVER_ERROR\",status=\"500\"}": 1.722175775,
                 "jetty_server_requests_seconds_sum{method=\"POST\",outcome=\"SUCCESS\",status=\"200\"}": 49272.573626984,
+                
+                # Вычисленные средние значения
+                "jetty_server_requests_seconds_avg": 0.045,
+                "jetty_get_avg_time": 0.032,
+                "jetty_post_avg_time": 0.078,
+                
+                # Системные метрики
                 "jvm_gc_pause_seconds_sum": 2.065,
                 "jvm_memory_used_bytes": 24038272.0,
-                "postgres_connections": 66.0,
-                "postgres_locks": 1.0,
-                "postgres_rows_inserted_total": 1336082.0,
+                "jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}": 24038272.0,
                 "system_cpu_usage": 0.06987864285714286,
                 "system_load_average_1m": 0.21,
-                "tx_pool_size": 0.0
+                "system_cpu_count": 8.0,
+                
+                # PostgreSQL метрики
+                "postgres_connections": 66.0,
+                "postgres_connections{database=\"db01\"}": 66.0,
+                "postgres_locks": 1.0,
+                "postgres_locks{database=\"db01\"}": 1.0,
+                "postgres_rows_inserted_total": 1336082.0,
+                "postgres_rows_inserted_total{database=\"db01\"}": 1336082.0,
+                "postgres_transactions_total": 5000.0,
+                "postgres_transactions_total{database=\"db01\"}": 5000.0,
+                "postgres_rows_updated_total": 2000.0,
+                "postgres_rows_updated_total{database=\"db01\"}": 2000.0,
+                "postgres_rows_deleted_total": 100.0,
+                "postgres_rows_deleted_total{database=\"db01\"}": 100.0,
+                "postgres_blocks_reads_total": 50000.0,
+                "postgres_blocks_reads_total{database=\"db01\"}": 50000.0,
+                
+                # JVM метрики
+                "jvm_threads_live_threads": 45.0,
+                "jvm_classes_loaded_classes": 8000.0,
+                
+                # Jetty метрики
+                "jetty_connections_current_connections": 25.0,
+                "jetty_connections_bytes_in_bytes_sum": 1000000.0,
+                "jetty_connections_bytes_out_bytes_sum": 2000000.0,
+                
+                # Транзакции
+                "tx_pool_size": 150.0
             }
             # prominent формируется по тем же правилам, что и в проде
             mock_prominent = {}
-            for name, config in PROMINENT_METRICS.items():
+            for config in KPI_METRICS_CONFIG:
+                name = config["id"]
                 value = None
-                if name in mock_metrics:
-                    value = mock_metrics[name]
-                elif "formula" in config:
-                    value = eval_formula(config["formula"], mock_metrics)
+                
+                # Специальная обработка для KPI метрик
+                if name == "api_response_time":
+                    # Вычисляем среднее время ответа API
+                    total_count = mock_metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}', 0)
+                    total_sum = mock_metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}', 0)
+                    if total_count > 0:
+                        value = total_sum / total_count
+                    else:
+                        value = 0.045  # fallback
+                        
+                elif name == "get_response_time":
+                    # Время ответа GET запросов
+                    get_count = mock_metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}', 0)
+                    get_sum = mock_metrics.get('jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}', 0)
+                    if get_count > 0:
+                        value = get_sum / get_count
+                    else:
+                        value = 0.032  # fallback
+                        
+                elif name == "post_response_time":
+                    # Время ответа POST запросов
+                    post_count = mock_metrics.get('jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}', 0)
+                    post_sum = mock_metrics.get('jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}', 0)
+                    if post_count > 0:
+                        value = post_sum / post_count
+                    else:
+                        value = 0.078  # fallback
+                        
+                elif name == "cpu_usage":
+                    # Загрузка CPU (конвертируем в проценты)
+                    value = mock_metrics.get("system_cpu_usage", 0.07) * 100
+                    
+                elif name == "memory_usage":
+                    # Используемая память JVM (конвертируем в MB)
+                    value = mock_metrics.get("jvm_memory_used_bytes{area=\"heap\",id=\"Tenured Gen\"}", 24038272.0) / 1024 / 1024
+                    
+                elif name == "postgres_connections":
+                    # Активные подключения к БД
+                    value = mock_metrics.get("postgres_connections{database=\"db01\"}", 66.0)
+                    
+                elif name == "postgres_locks":
+                    # Активные блокировки в БД
+                    value = mock_metrics.get("postgres_locks{database=\"db01\"}", 1.0)
+                    
+                elif name == "gc_pause_time":
+                    # Время паузы GC
+                    value = mock_metrics.get("jvm_gc_pause_seconds_sum", 2.065)
+                    
+                elif name == "system_load":
+                    # Нагрузка системы (1 мин)
+                    value = mock_metrics.get("system_load_average_1m", 0.21)
+                    
+                elif name == "tx_pool_size":
+                    # Размер пула транзакций
+                    value = mock_metrics.get("tx_pool_size", 150.0)
+                    
                 else:
-                    base_name = name.split('{')[0]
-                    for key, v in mock_metrics.items():
-                        if key.startswith(base_name + '{'):
-                            value = v
-                            break
-                if value is None:
+                    # Fallback для неизвестных метрик
                     value = 0.0
+                    
                 mock_prominent[name] = value
             print("[DEBUG] MOCK MODE: returning prod-like test data")
             return {"metrics": mock_metrics, "prominent": mock_prominent, "error": None}
@@ -151,7 +235,8 @@ class MetricsService:
             metrics['jetty_get_avg_time'] = get_sum / get_count
 
         prominent = {}
-        for name, config in PROMINENT_METRICS.items():
+        for config in KPI_METRICS_CONFIG:
+            name = config["id"]
             value = None
             norm_name = MetricKeyHelper.normalize(name)
             if norm_name in metrics:
@@ -189,12 +274,12 @@ def update_metrics():
             now = time.time()
             with lock:
                 for name, value in parsed.items():
-                    if should_display_metric(name, METRICS_CONFIG):
-                        metrics_data["metrics"][name] = value
-                # === NEW: обновляем историю только по ключам из PROMINENT_METRICS и METRICS_CONFIG ===
-                all_metric_names = set(PROMINENT_METRICS.keys())
-                for category in METRICS_CONFIG:
-                    for pattern in category["metrics"]:
+                    # Сохраняем все метрики
+                    metrics_data["metrics"][name] = value
+                # === NEW: обновляем историю только по ключам из KPI_METRICS_CONFIG и SECTIONS ===
+                all_metric_names = set(config["id"] for config in KPI_METRICS_CONFIG)
+                for category_name, metrics_list in SECTIONS.items():
+                    for pattern in metrics_list:
                         all_metric_names.add(pattern)
                 for metric_name in all_metric_names:
                     norm_name = MetricKeyHelper.normalize(metric_name)
@@ -224,9 +309,9 @@ def get_all_metric_names():
     """
     Возвращает все имена метрик из конфигурации
     """
-    names = set(PROMINENT_METRICS.keys())
-    for category in METRICS_CONFIG:
-        for pattern in category["metrics"]:
+    names = set(config["id"] for config in KPI_METRICS_CONFIG)
+    for category_name, metrics_list in SECTIONS.items():
+        for pattern in metrics_list:
             # Если pattern не содержит спецсимволов, добавляем как есть
             if not any(c in pattern for c in ".*?[]{}()^$|+\\"):
                 names.add(pattern)
@@ -247,12 +332,12 @@ def get_metrics_history():
         all_metrics = set()
         
         # Добавляем метрики из prominent
-        for metric_name in PROMINENT_METRICS.keys():
-            all_metrics.add(metric_name)
+        for config in KPI_METRICS_CONFIG:
+            all_metrics.add(config["id"])
         
-        # Добавляем метрики из METRICS_CONFIG
-        for category in METRICS_CONFIG:
-            for metric_name in category["metrics"]:
+        # Добавляем метрики из SECTIONS
+        for category_name, metrics_list in SECTIONS.items():
+            for metric_name in metrics_list:
                 all_metrics.add(metric_name)
         
         # Базовые значения для разных типов метрик

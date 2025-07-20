@@ -53,13 +53,9 @@ def data():
 @dashboard_bp.route("/dashboard_data")
 def dashboard_data():
     try:
-        print("[DEBUG] /dashboard_data called")
         kpi_data = MetricsService.get_metrics_data()
-        print(f"[DEBUG] /dashboard_data kpi_data keys: {list(kpi_data.keys())}")
-        print(f"[DEBUG] /dashboard_data prominent keys: {list(kpi_data.get('prominent', {}).keys())}")
         
         history_data = get_metrics_history()
-        print(f"[DEBUG] /dashboard_data history_data keys: {list(history_data.keys())}")
         
         # Ensure every prominent key exists in history
         prominent = kpi_data["prominent"]
@@ -76,11 +72,9 @@ def dashboard_data():
             "error": kpi_data.get("error"),
         }
         
-        print(f"[DEBUG] /dashboard_data response data keys: {list(response_data.keys())}")
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"[ERROR] /dashboard_data error: {e}")
         return jsonify({
             "error": f"Failed to load dashboard data: {str(e)}"
         }), 500
@@ -139,7 +133,6 @@ def sections_config():
     """
     Возвращает конфигурацию секций метрик
     """
-    print("[DEBUG] /api/sections called - real config")
     return jsonify({
         "status": "ok",
         "sections": SECTIONS,
@@ -157,15 +150,7 @@ def test_endpoint():
         "message": "Test endpoint works"
     })
 
-@dashboard_bp.route("/sections")
-def sections_simple():
-    """
-    Простой endpoint для секций без /api/ префикса
-    """
-    return jsonify({
-        "status": "ok",
-        "message": "Simple sections endpoint works"
-    })
+# Удалён эндпоинт /sections (sections_simple)
 
 @dashboard_bp.route("/api/kpi/config")
 def kpi_config():

@@ -64,8 +64,18 @@ async function loadSectionsConfig() {
         allMetrics = data.all_metrics || {};
         timeIntervals = data.time_intervals || [];
         
-        console.log('Sections config loaded:', Object.keys(sectionsConfig).length, 'sections');
-        console.log('All metrics loaded:', Object.keys(allMetrics).length, 'metrics');
+        // Динамически заполняем селектор интервалов
+        const intervalSelect = document.getElementById('time-interval');
+        if (intervalSelect && timeIntervals.length > 0) {
+            intervalSelect.innerHTML = '';
+            timeIntervals.forEach(interval => {
+                const option = document.createElement('option');
+                option.value = interval.value;
+                option.textContent = interval.label;
+                intervalSelect.appendChild(option);
+            });
+            intervalSelect.value = currentInterval;
+        }
         
     } catch (error) {
         console.error('Failed to load sections config:', error);
@@ -164,7 +174,14 @@ function renderSections() {
     
     container.innerHTML = '';
     
-    Object.keys(sectionsConfig).forEach(sectionName => {
+    // Сортируем секции: KPI всегда первая
+    const sectionNames = Object.keys(sectionsConfig);
+    sectionNames.sort((a, b) => {
+        if (a === 'KPI') return -1;
+        if (b === 'KPI') return 1;
+        return 0;
+    });
+    sectionNames.forEach(sectionName => {
         const section = createSection(sectionName);
         container.appendChild(section);
     });
@@ -252,10 +269,28 @@ async function loadSectionData(sectionName) {
         
         const results = await Promise.all(metricPromises);
         
-        // Рендерим метрики
+        // Сначала добавляем карточки в DOM
         results.forEach(result => {
             const metricCard = createMetricCard(result.id, result.data, result.error);
             content.appendChild(metricCard);
+        });
+        
+        // Затем рендерим графики для каждой карточки
+        results.forEach(result => {
+            if (result.data && result.data.history && result.data.history.result && result.data.history.result.length > 0) {
+                const config = result.data.config;
+                const history = result.data.history;
+                const metricId = result.id;
+                const resultObj = history.result[0];
+                if (resultObj.values && resultObj.values.length > 0) {
+                    if (config.type.includes('trend')) {
+                        renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+                    }
+                    if (config.type.includes('bar')) {
+                        renderBarChart(config, resultObj.values, `bar-${metricId}`);
+                    }
+                }
+            }
         });
         
     } catch (error) {
@@ -411,22 +446,22 @@ function createMetricCard(metricId, data, error) {
         }
     }
     
-    // Debug-информация (только после графиков, не прерывает выполнение)
-    if (debugMode && debug) {
-        const debugInfo = document.createElement('div');
-        debugInfo.className = 'debug-info';
-        const historyData = debug.data?.result?.[0]?.values || [];
-        const values = historyData.map(([_, v]) => v).filter(v => v !== null && v !== undefined);
-        const min = values.length > 0 ? Math.min(...values) : 'N/A';
-        const max = values.length > 0 ? Math.max(...values) : 'N/A';
-        const count = values.length;
-        debugInfo.innerHTML = `
-            <strong>Debug Info:</strong><br>
-            <pre>JSON: ${JSON.stringify(debug, null, 2)}</pre>
-            <strong>Stats:</strong> min: ${min}, max: ${max}, count: ${count}
-        `;
-        card.appendChild(debugInfo);
-    }
+    // Debug-информация (убрано по просьбе пользователя)
+    // if (debugMode && debug) {
+    //     const debugInfo = document.createElement('div');
+    //     debugInfo.className = 'debug-info';
+    //     const historyData = debug.data?.result?.[0]?.values || [];
+    //     const values = historyData.map(([_, v]) => v).filter(v => v !== null && v !== undefined);
+    //     const min = values.length > 0 ? Math.min(...values) : 'N/A';
+    //     const max = values.length > 0 ? Math.max(...values) : 'N/A';
+    //     const count = values.length;
+    //     debugInfo.innerHTML = `
+    //         <strong>Debug Info:</strong><br>
+    //         <pre>JSON: ${JSON.stringify(debug, null, 2)}</pre>
+    //         <strong>Stats:</strong> min: ${min}, max: ${max}, count: ${count}
+    //     `;
+    //     card.appendChild(debugInfo);
+    // }
     
     return card;
 }
@@ -703,6 +738,16 @@ async function generateReportHtml() {
                 h3 { color: #495057; margin: 0 0 15px 0; }
                 h4 { color: #495057; margin: 0 0 10px 0; }
                 h5 { color: #6c757d; margin: 0 0 8px 0; }
+                .debug-info {
+                    margin-top: 20px;
+                    padding: 10px;
+                    background-color: #f8f9fa;
+                    border: 1px solid #e9ecef;
+                    border-radius: 4px;
+                    font-size: 0.9em;
+                    overflow-y: auto;
+                    max-height: 200px; /* Ограничиваем высоту */
+                }
             </style>
         </head>
         <body>

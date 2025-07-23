@@ -63,7 +63,7 @@ amity_dashboard/
 - Transaction Pool: `tx_pool_size`
 - API Response Time (avg): `jetty_server_requests_seconds_avg` (вычисляется на бэке)
 - CPU Usage: `process_cpu_usage`
-- GC Pause (major): `jvm_gc_pause_seconds_sum{action="end of major GC"}`
+ - GC Pause (major): `gc_pause_time`
 - DB Connections: `postgres_connections{database="db01"}`
 - ...и другие (см. config и JS)
 

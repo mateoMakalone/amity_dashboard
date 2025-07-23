@@ -116,49 +116,39 @@ def kpi_config():
 
 @dashboard_bp.route("/api/metrics/<metric_id>/history")
 def metric_history(metric_id):
-    """
-    Возвращает историю конкретной метрики
-    """
+    """Возвращает историю конкретной метрики из памяти"""
     try:
         if metric_id not in ALL_METRICS:
             return jsonify({
                 "status": "error",
                 "error": f"Metric '{metric_id}' not found"
             }), 404
-        
-        metric_config = ALL_METRICS[metric_id]
-        
-        # Получаем параметры времени
-        interval = request.args.get('interval', '30')
+
+        # Параметр interval определяет окно выборки в минутах
+        interval = request.args.get("interval", "30")
         try:
             interval_minutes = int(interval)
         except ValueError:
             interval_minutes = 30
-        
-        # Вычисляем временные параметры
+
         now = int(time.time())
-        start_time = now - (interval_minutes * 60)
-        step = max(1, interval_minutes)  # step = interval_seconds / 60
-        
-        # Формируем запрос к Prometheus
-        params = {
-            'query': metric_config['promql'],
-            'start': str(start_time),
-            'end': str(now),
-            'step': str(step)
+        start_time = now - interval_minutes * 60
+
+        history = MetricsService.get_metrics_history()
+        values = history.get(metric_id, [])
+        filtered = [v for v in values if v[0] >= start_time]
+
+        result = {
+            "status": "success",
+            "data": {
+                "result": [{
+                    "metric": {"__name__": metric_id},
+                    "values": [[ts, str(val)] for ts, val in filtered]
+                }]
+            }
         }
-        
-        # В MOCK_MODE возвращаем тестовые данные
-        if MOCK_MODE:
-            return generate_mock_prometheus_data(metric_config['promql'], str(start_time), str(now), str(step))
-        
-        # Делаем запрос к Prometheus
-        # prometheus_url = f"{PROMETHEUS_URL}/api/v1/query_range"
-        # response = requests.get(prometheus_url, params=params, timeout=10)
-        # response.raise_for_status()
-        
-        # return jsonify(response.json())
-        
+        return jsonify(result)
+
     except Exception as e:
         return jsonify({
             "status": "error",
@@ -189,95 +179,6 @@ def export_report():
     stats = {name: calc_metric_stats(history[name]) for name in history}
     return render_template("report.html", stats=stats, history=history)
 
-def generate_mock_prometheus_data(query, start, end, step):
-    """
-    Генерирует моковые данные для Prometheus query_range в MOCK_MODE
-    """
-    try:
-        start_time = float(start)
-        end_time = float(end)
-        step_seconds = float(step)
-        
-        # Определяем базовые значения в зависимости от запроса
-        base_values = {
-            'system_cpu_usage': {'base': 0.75, 'range': 0.2, 'min': 0.3},
-            'jvm_memory_used_bytes': {'base': 192521736, 'range': 50000000, 'min': 150000000},
-            'postgres_connections': {'base': 68, 'range': 15, 'min': 50},
-            'postgres_locks': {'base': 1, 'range': 3, 'min': 0},
-            'jvm_gc_pause_seconds_sum': {'base': 21.743, 'range': 5, 'min': 15},
-            'system_load_average_1m': {'base': 0.82, 'range': 0.3, 'min': 0.4},
-            'tx_pool_size': {'base': 150, 'range': 30, 'min': 100},
-            'jetty_server_requests_seconds_count': {'base': 1234, 'range': 200, 'min': 1000},
-            'postgres_rows_inserted_total': {'base': 1282731, 'range': 100000, 'min': 1200000},
-            'postgres_transactions_total': {'base': 5000, 'range': 1000, 'min': 4000},
-            'postgres_rows_updated_total': {'base': 2000, 'range': 500, 'min': 1500},
-            'postgres_rows_deleted_total': {'base': 100, 'range': 50, 'min': 50},
-            'postgres_blocks_reads_total': {'base': 50000, 'range': 10000, 'min': 40000},
-            'jvm_threads_live_threads': {'base': 45, 'range': 10, 'min': 35},
-            'jvm_classes_loaded_classes': {'base': 8000, 'range': 500, 'min': 7500},
-            'jetty_server_requests_seconds_avg': {'base': 0.045, 'range': 0.02, 'min': 0.01},
-            'jetty_get_avg_time': {'base': 0.032, 'range': 0.01, 'min': 0.02},
-            'jetty_post_avg_time': {'base': 0.078, 'range': 0.05, 'min': 0.06},
-            'jetty_connections_current_connections': {'base': 25, 'range': 10, 'min': 15},
-            'jetty_connections_bytes_in_bytes_sum': {'base': 1000000, 'range': 200000, 'min': 800000},
-            'jetty_connections_bytes_out_bytes_sum': {'base': 2000000, 'range': 400000, 'min': 1600000},
-            'system_cpu_count': {'base': 8, 'range': 0, 'min': 8}  # Фиксированное значение
-        }
-        
-        # Определяем базовые параметры для метрики
-        metric_config = None
-        for metric_name, config in base_values.items():
-            if metric_name in query:
-                metric_config = config
-                break
-        
-        if not metric_config:
-            # Для неизвестных метрик используем общие параметры
-            metric_config = {'base': 100, 'range': 50, 'min': 50}
-        
-        # Генерируем временные ряды
-        timestamps = []
-        values = []
-        current_time = start_time
-        current_val = metric_config['base']
-        
-        import random
-        
-        while current_time <= end_time:
-            timestamps.append(current_time)
-            
-            # Добавляем случайные колебания
-            change = (random.random() - 0.5) * metric_config['range'] * 0.1
-            current_val += change
-            current_val = max(current_val, metric_config['min'])
-            
-            # Для счетчиков значения только растут
-            if 'count' in query or 'total' in query:
-                current_val = max(current_val, metric_config['base'] + (current_time - start_time) * 0.01)
-            
-            # Для system_cpu_count - фиксированное значение
-            if 'system_cpu_count' in query:
-                current_val = metric_config['base']
-            
-            values.append(round(current_val, 3))
-            current_time += step_seconds
-        
-        return jsonify({
-            "status": "success",
-            "data": {
-                "resultType": "matrix",
-                "result": [{
-                    "metric": {"__name__": query.split('{')[0] if '{' in query else query},
-                    "values": list(zip(timestamps, values))
-                }]
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "error": f"Mock data generation failed: {str(e)}"
-        }), 500
 
 def calc_metric_stats(values):
     if not values:

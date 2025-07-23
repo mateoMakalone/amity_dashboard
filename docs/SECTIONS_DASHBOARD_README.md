@@ -58,7 +58,8 @@ SECTIONS = {
         "postgres_blocks_reads_total",
         "postgres_rows_inserted_total",
         "postgres_rows_updated_total",
-        "postgres_transactions_total"
+        "postgres_transactions_total",
+        "postgres_dead_rows"
     ],
     "JVM": [
         "gc_pause_time",
@@ -106,7 +107,7 @@ ALL_METRICS = {
 - `GET /api/sections` - конфигурация всех секций и метрик
 - `GET /api/sections/{section_name}/metrics` - метрики конкретной секции
 - `GET /api/metrics/{metric_id}/history` - история конкретной метрики
-- `GET /api/prometheus/query_range` - прокси к Prometheus API
+- Метрики считываются с `/metrics`
 
 ### Существующие (для обратной совместимости)
 
@@ -135,7 +136,7 @@ ALL_METRICS = {
 
 - **Глобальный dropdown**: 15 / 30 / 45 / 60 минут
 - **Синхронизация**: все графики обновляются одновременно
-- **Перезапрос**: автоматическое обновление через Prometheus API
+- **Перезапрос**: автоматическое обновление через `/metrics`
 
 ### Экспорт отчётов
 
@@ -207,7 +208,6 @@ Stats: min: 0.03, max: 3.42, count: 60
 ### Обратная совместимость
 
 - ✅ Существующие эндпоинты сохранены
-- ✅ MOCK_MODE поддерживается
 - ✅ Конфигурация метрик не изменена
 - ✅ Старые дашборды продолжают работать
 

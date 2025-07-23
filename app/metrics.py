@@ -1,6 +1,7 @@
 import threading
 import time
 import os
+import requests
 from collections import defaultdict, deque
 from .parser import parse_metrics, should_display_metric, filter_metric, sum_metric, get_metric, eval_formula
 from .config import METRICS_URL, REQUEST_TIMEOUT, UPDATE_INTERVAL, KPI_METRICS_CONFIG, ALL_METRICS, INITIAL_METRICS, SECTIONS

@@ -38,7 +38,8 @@ SECTIONS = {
     "PostgreSQL": [
         "postgres_connections",
         "postgres_locks",
-        "postgres_blocks_reads_total"
+        "postgres_blocks_reads_total",
+        "postgres_dead_rows"
     ],
     "JVM": [
         "jvm_threads_live_threads",
@@ -190,6 +191,15 @@ ALL_METRICS = {
         "unit": "",
         "color": "#3498db",
         "format": "fixed0"
+    },
+    "postgres_dead_rows": {
+        "label": "Мертвые строки в БД",
+        "promql": 'postgres_dead_rows{database="db01"}',
+        "type": "trend",
+        "unit": "",
+        "color": "#c0392b",
+        "format": "fixed0",
+        "thresholds": {"warning": 10000, "critical": 20000}
     },
     "jvm_threads_live_threads": {
         "label": "Активные потоки JVM",
@@ -401,6 +411,7 @@ INITIAL_METRICS = [
     'postgres_rows_updated_total',
     'postgres_rows_deleted_total',
     'postgres_blocks_reads_total',
+    'postgres_dead_rows',
     'jvm_threads_live_threads',
     'jvm_classes_loaded_classes',
     'jetty_connections_current_connections',

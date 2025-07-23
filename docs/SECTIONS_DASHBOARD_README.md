@@ -61,8 +61,8 @@ SECTIONS = {
         "postgres_transactions_total"
     ],
     "JVM": [
-        "jvm_gc_pause_seconds_sum",
-        "jvm_memory_used_bytes",
+        "gc_pause_time",
+        "jvm_memory_used",
         "jvm_threads_live_threads",
         "jvm_classes_loaded_classes"
     ],
@@ -76,7 +76,7 @@ SECTIONS = {
     ],
     "System": [
         "system_cpu_usage",
-        "system_load_average_1m",
+        "system_load",
         "system_cpu_count"
     ]
 }

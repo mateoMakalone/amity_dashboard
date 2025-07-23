@@ -853,7 +853,7 @@ function startAutoUpdate() {
     
     updateTimer = setInterval(async () => {
         await loadSectionsData();
-    }, 30000); // Обновляем каждые 30 секунд
+    }, 1000); // Обновляем каждые 1 секунду (в пределах 1–2 секунд)
 }
 
 /**

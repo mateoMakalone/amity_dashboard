@@ -167,12 +167,6 @@ def get_all_metric_names():
                 names.add(pattern)
     return names
 
-def get_metrics_history():
-    """
-    Возвращает историю метрик
-    """
-    with lock:
-        return {name: list(history) for name, history in metrics_data["history"].items()}
 
 def start_metrics_thread():
     """

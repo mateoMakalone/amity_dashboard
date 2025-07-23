@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
 import time
 from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, KPI_METRICS_CONFIG
-from app.metrics_collector import metrics_data
+from .metrics import MetricsService
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -53,8 +53,8 @@ def data():
 def dashboard_data():
     try:
         kpi_data = MetricsService.get_metrics_data()
-        
-        history_data = get_metrics_history()
+
+        history_data = MetricsService.get_metrics_history()
         
         # Ensure every prominent key exists in history
         prominent = kpi_data["prominent"]
@@ -170,7 +170,8 @@ def metric_history_api():
     metric = request.args.get("metric")
     if not metric:
         return jsonify({"status": "error", "error": "no metric"}), 400
-    values = metrics_data["history"].get(metric, [])
+    history = MetricsService.get_metrics_history()
+    values = history.get(metric, [])
     result = {
         "status": "success",
         "data": {
@@ -184,8 +185,9 @@ def metric_history_api():
 
 @dashboard_bp.route("/export")
 def export_report():
-    stats = {name: calc_metric_stats(metrics_data["history"][name]) for name in metrics_data["history"]}
-    return render_template("report.html", stats=stats, history=metrics_data["history"])
+    history = MetricsService.get_metrics_history()
+    stats = {name: calc_metric_stats(history[name]) for name in history}
+    return render_template("report.html", stats=stats, history=history)
 
 def generate_mock_prometheus_data(query, start, end, step):
     """

@@ -6,9 +6,7 @@
 
 ### ✅ Реализованные функции
 
-1. **Прямые запросы к Prometheus API**
-   - Эндпоинт `/api/prometheus/query_range` для проксирования запросов
-   - Поддержка MOCK_MODE для тестирования
+1. **Сбор метрик из `/metrics`**
    - Обработка ошибок Prometheus
 
 2. **Конфигурируемые KPI-метрики**
@@ -22,6 +20,7 @@
    - Синхронизация всех графиков
    - Динамическое обновление данных
 
+- Новая метрика `postgres_dead_rows` в секции PostgreSQL
 4. **Интерактивные графики**
    - Линейные графики временных рядов (Plotly.js)
    - Гистограммы распределения значений
@@ -46,9 +45,8 @@
 ```
 app/
 ├── config.py              # KPI_METRICS_CONFIG, TIME_INTERVALS
-├── routes.py              # /api/prometheus/query_range, /api/kpi/config
 ├── metrics.py             # Существующая логика метрик
-└── templates/
+├── routes.py              # API endpoints
     └── dashboard.html     # Модернизированный шаблон
 ```
 
@@ -106,7 +104,7 @@ python run.py
 curl http://localhost:5000/api/kpi/config
 
 # Прокси Prometheus
-curl "http://localhost:5000/api/prometheus/query_range?query=system_cpu_usage&start=1640995200&end=1640998800&step=30"
+curl http://localhost:9090/metrics
 
 # Главная страница
 curl http://localhost:5000/
@@ -139,7 +137,6 @@ python test_modernized_dashboard.py
 ### Обработка ошибок
 
 - Отображение ошибок Prometheus на графиках
-- Fallback на моковые данные в MOCK_MODE
 - Graceful degradation при недоступности API
 
 ## 🎨 UI/UX
@@ -161,15 +158,12 @@ python test_modernized_dashboard.py
 ### Изменения в существующем коде
 
 1. **config.py**: добавлены `KPI_METRICS_CONFIG`, `TIME_INTERVALS`, `PROMETHEUS_URL`
-2. **routes.py**: добавлены `/api/prometheus/query_range`, `/api/kpi/config`
 3. **dashboard.html**: полностью переписан
-4. **dashboard.js**: полностью переписан
+2. **routes.py**: содержит REST endpoints
 
 ### Обратная совместимость
 
 - Существующие эндпоинты (`/data`, `/history`) сохранены
-- MOCK_MODE поддерживается
-- Конфигурация метрик не изменена
 
 ## 🐛 Отладка
 
@@ -188,8 +182,7 @@ print(f"[DEBUG] Prometheus query: {query}")
 curl -v http://localhost:5000/api/kpi/config
 
 # Проверка Prometheus прокси
-curl -v "http://localhost:5000/api/prometheus/query_range?query=test&start=1&end=2&step=1"
-```
+curl -v http://localhost:9090/metrics
 
 ## 📈 Производительность
 

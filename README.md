@@ -38,6 +38,7 @@ amity_dashboard/
    ```python
    METRICS_URL = "http://your-prometheus-server:9090/metrics"
    ```
+Приложение периодически запрашивает этот адрес и парсит ответ в формате Prometheus.
 3. Запустите сервер:
    ```bash
    python run.py
@@ -65,6 +66,7 @@ amity_dashboard/
 - CPU Usage: `process_cpu_usage`
  - GC Pause (major): `gc_pause_time`
 - DB Connections: `postgres_connections{database="db01"}`
+- Dead Rows: `postgres_dead_rows`
 - ...и другие (см. config и JS)
 
 ## Контакты и поддержка

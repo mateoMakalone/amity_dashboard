@@ -506,17 +506,34 @@ function getCurrentValue(history) {
     }
     
     const lastPoint = result.values[result.values.length - 1];
-    return lastPoint[1];
+    // Значение приходит строкой из API, конвертируем в число
+    const val = lastPoint[1];
+    if (val === null || val === undefined) {
+        return null;
+    }
+    const parsed = typeof val === 'string' ? parseFloat(val) : val;
+    return isNaN(parsed) ? null : parsed;
 }
 
 /**
  * Форматирует значение метрики
  */
 function formatValue(value, format) {
-    if (value === null || value === undefined) return 'N/A';
-    
+    // Если значение пустое – показываем N/A
+    if (value === null || value === undefined) {
+        return 'N/A';
+    }
+    // Приводим строковые значения к числам, иначе методы toFixed недоступны
+    let num = value;
+    if (typeof num === 'string') {
+        // пустая строка или непреобразуемое значение → N/A
+        const parsed = parseFloat(num);
+        if (!isNaN(parsed)) {
+            num = parsed;
+        }
+    }
     const formatter = formatFunctions[format] || formatFunctions.fixed2;
-    return formatter(value);
+    return formatter(num);
 }
 
 /**
@@ -529,7 +546,11 @@ function renderTrendChart(config, values, containerId) {
     }
     
     const timestamps = values.map(([ts, _]) => new Date(ts * 1000));
-    const dataValues = values.map(([_, v]) => v);
+    // Приводим значения к числам, т.к. API возвращает строки
+    const dataValues = values.map(([_, v]) => {
+        const parsed = typeof v === 'string' ? parseFloat(v) : v;
+        return isNaN(parsed) ? null : parsed;
+    });
     
     const data = [{
         x: timestamps,
@@ -585,7 +606,13 @@ function renderBarChart(config, values, containerId) {
         return;
     }
     
-    const dataValues = values.map(([_, v]) => v).filter(v => v !== null && v !== undefined);
+    // Приводим строки к числам и отбрасываем нечисловые значения
+    const dataValues = values
+        .map(([_, v]) => {
+            const parsed = typeof v === 'string' ? parseFloat(v) : v;
+            return isNaN(parsed) ? null : parsed;
+        })
+        .filter(v => v !== null && v !== undefined);
     
     if (dataValues.length === 0) {
         return;

@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify, request
 import time
 from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, KPI_METRICS_CONFIG
 from .metrics import MetricsService
+from flask import jsonify, request
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -48,6 +49,28 @@ def dashboard():
 @dashboard_bp.route("/data")
 def data():
     return jsonify(MetricsService.get_metrics_data())
+
+@dashboard_bp.route('/api/metrics/batch')
+def metrics_batch():
+    """
+    Возвращает текущие значения всех метрик
+    Используется фронтендом для автообновлений (update.js).
+    """
+    metrics = MetricsService.get_all_metrics()
+    return jsonify(metrics)
+
+@dashboard_bp.route('/api/metrics/history')
+def metrics_history():
+    """
+    Возвращает историю всех метрик или выбранной секции.
+    Используется ленивой загрузкой секций на фронтенде.
+    """
+    section = request.args.get('section')
+    history = MetricsService.get_metrics_history()
+    if section:
+        filtered = {k: v for k, v in history.items() if k.startswith(section)}
+        return jsonify(filtered)
+    return jsonify(history)
 
 @dashboard_bp.route("/dashboard_data")
 def dashboard_data():

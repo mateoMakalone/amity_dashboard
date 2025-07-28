@@ -142,6 +142,22 @@ class MetricsService:
     def get_metrics_history():
         with lock:
             return {name: list(history) for name, history in metrics_data["history"].items()}
+        
+    @classmethod
+    def get_all_metrics(cls):
+        """
+        Возвращает последние значения всех метрик (словарь metric_name -> value).
+        """
+        with lock:
+            return dict(metrics_data["metrics"])
+
+    @classmethod
+    def get_metrics_history(cls):
+        """
+        Возвращает историю всех метрик (словарь metric_name -> [(timestamp, value), ...]).
+        """
+        with lock:
+            return {name: list(history) for name, history in metrics_data["history"].items()}
 
 def update_metrics():
     print("[DEBUG] update_metrics: поток сбора метрик стартовал")

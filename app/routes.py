@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request
 from .metrics import get_metrics_data, get_metrics_history, start_metrics_thread
+import time
 from .config import METRICS_CONFIG, PROMINENT_METRICS
 import os
 
@@ -16,6 +17,39 @@ def data():
 @dashboard_bp.route("/history")
 def history():
     return jsonify(get_metrics_history())
+
+# Новая точка: возвращает историю сразу по нескольким метрикам
+@dashboard_bp.route("/api/metrics/history")
+def metrics_history():
+    """Return history for multiple metrics at once."""
+    try:
+        metrics_param = request.args.get("metrics", "")
+        interval = request.args.get("interval", "30")
+        try:
+            interval_minutes = int(interval)
+        except ValueError:
+            interval_minutes = 30
+        metric_ids = [m.strip() for m in metrics_param.split(',') if m.strip()]
+        now = int(time.time())
+        start_time = now - interval_minutes * 60
+        history = get_metrics_history()
+        results = []
+        for metric_id in metric_ids:
+            values = history.get(metric_id, [])
+            filtered = [v for v in values if v[0] >= start_time]
+            results.append({
+                "metric": {"__name__": metric_id},
+                "values": [[ts, val] for ts, val in filtered]
+            })
+        return jsonify({
+            "status": "success",
+            "data": {"result": results}
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": f"Failed to get metrics history: {str(e)}"
+        }), 500
 
 js_error_log = []
 JS_ERROR_LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'js_error.log')

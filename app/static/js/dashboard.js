@@ -144,8 +144,11 @@ async function loadSectionsData() {
         showLoading();
         updateStatus('loading');
         
-        // Рендерим секции
-        renderSections();
+        // Рендерим секции только при первой загрузке, чтобы избежать мерцания
+        const container = document.getElementById('sections-container');
+        if (container && !container.hasChildNodes()) {
+            renderSections();
+        }
         
         // Загружаем данные для каждой секции
         const sectionPromises = Object.keys(sectionsConfig).map(async (sectionName) => {
@@ -248,11 +251,12 @@ async function loadSectionData(sectionName) {
         
         if (!content) return;
         
-        // Очищаем контент
-        content.innerHTML = '';
-        
+        // Если в секции нет метрик — показываем stub и выходим
         if (sectionMetrics.length === 0) {
-            content.innerHTML = '<div class="no-data">Нет метрик в этой секции</div>';
+            // Если ещё нет содержимого, создаём сообщение
+            if (!content.hasChildNodes()) {
+                content.innerHTML = '<div class="no-data">Нет метрик в этой секции</div>';
+            }
             return;
         }
         
@@ -268,26 +272,33 @@ async function loadSectionData(sectionName) {
         });
         
         const results = await Promise.all(metricPromises);
-        
-        // Сначала добавляем карточки в DOM
+
         results.forEach(result => {
-            const metricCard = createMetricCard(result.id, result.data, result.error);
-            content.appendChild(metricCard);
-        });
-        
-        // Затем рендерим графики для каждой карточки
-        results.forEach(result => {
-            if (result.data && result.data.history && result.data.history.result && result.data.history.result.length > 0) {
-                const config = result.data.config;
-                const history = result.data.history;
-                const metricId = result.id;
-                const resultObj = history.result[0];
-                if (resultObj.values && resultObj.values.length > 0) {
-                    if (config.type.includes('trend')) {
-                        renderTrendChart(config, resultObj.values, `trend-${metricId}`);
-                    }
-                    if (config.type.includes('bar')) {
-                        renderBarChart(config, resultObj.values, `bar-${metricId}`);
+            const existingCard = document.getElementById(`metric-${result.id}`);
+            if (existingCard) {
+                // Если карточка уже существует, обновляем её
+                if (result.data) {
+                    updateMetricCard(result.id, result.data);
+                } else if (result.error) {
+                    existingCard.innerHTML = `<div class="metric-header"><h4 class="metric-title">${result.id}</h4></div><div class="metric-error">Ошибка: ${result.error}</div>`;
+                }
+            } else {
+                // Если карточки нет, создаём новую и добавляем
+                const metricCard = createMetricCard(result.id, result.data, result.error);
+                content.appendChild(metricCard);
+                // Отрисовываем графики после добавления новой карточки
+                if (result.data && result.data.history && result.data.history.result && result.data.history.result.length > 0) {
+                    const config = result.data.config;
+                    const history = result.data.history;
+                    const metricId = result.id;
+                    const resultObj = history.result[0];
+                    if (resultObj.values && resultObj.values.length > 0) {
+                        if (config.type.includes('trend')) {
+                            renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+                        }
+                        if (config.type.includes('bar')) {
+                            renderBarChart(config, resultObj.values, `bar-${metricId}`);
+                        }
                     }
                 }
             }
@@ -391,7 +402,7 @@ function createMetricCard(metricId, data, error) {
     const value = document.createElement('span');
     value.className = 'metric-value';
     value.style.color = status.color;
-    
+
     // Получаем текущее значение
     const currentValue = getCurrentValue(history);
     if (currentValue !== null && currentValue !== undefined) {
@@ -400,10 +411,15 @@ function createMetricCard(metricId, data, error) {
     } else {
         value.textContent = 'N/A';
     }
-    
+
+    // Присваиваем ID, чтобы можно было обновлять значение без пересоздания карточки
+    value.id = `metric-value-${metricId}`;
+
     const unit = document.createElement('span');
     unit.className = 'metric-unit';
     unit.textContent = config.unit || '';
+    // Присваиваем ID для единицы измерения (при обновлении может измениться цвет)
+    unit.id = `metric-unit-${metricId}`;
     
     valueContainer.appendChild(value);
     valueContainer.appendChild(unit);
@@ -464,6 +480,47 @@ function createMetricCard(metricId, data, error) {
     // }
     
     return card;
+}
+
+/**
+ * Обновляет существующую карточку метрики без её пересоздания.
+ * Позволяет обновлять значение и графики в реальном времени без мерцания.
+ */
+function updateMetricCard(metricId, data) {
+    const card = document.getElementById(`metric-${metricId}`);
+    if (!card || !data || !data.config || !data.history) {
+        return;
+    }
+    const config = data.config;
+    const history = data.history;
+
+    // Обновляем значение
+    const valueEl = document.getElementById(`metric-value-${metricId}`);
+    if (valueEl) {
+        const currentValue = getCurrentValue(history);
+        if (currentValue !== null && currentValue !== undefined) {
+            const formatted = formatValue(currentValue, config.format);
+            valueEl.textContent = formatted;
+        } else {
+            valueEl.textContent = 'N/A';
+        }
+        // Обновляем цвет статуса
+        const status = getMetricStatus(config, history);
+        valueEl.style.color = status.color;
+    }
+
+    // Обновляем графики, если есть данные
+    if (history && history.result && history.result.length > 0) {
+        const resultObj = history.result[0];
+        if (resultObj.values && resultObj.values.length > 0) {
+            if (config.type.includes('trend')) {
+                renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+            }
+            if (config.type.includes('bar')) {
+                renderBarChart(config, resultObj.values, `bar-${metricId}`);
+            }
+        }
+    }
 }
 
 /**
@@ -874,13 +931,17 @@ async function generateReportHtml() {
  * Запускает автообновление
  */
 function startAutoUpdate() {
+    // Интервал автообновления в миллисекундах. Обновляем каждую секунду для realtime‑режима,
+    // обновляя существующие карточки без перерисовки страницы.
+    const AUTO_UPDATE_INTERVAL_MS = 1000;
+
     if (updateTimer) {
         clearInterval(updateTimer);
     }
-    
+
     updateTimer = setInterval(async () => {
         await loadSectionsData();
-    }, 1000); // Обновляем каждые 1 секунду (в пределах 1–2 секунд)
+    }, AUTO_UPDATE_INTERVAL_MS);
 }
 
 /**

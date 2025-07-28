@@ -53,9 +53,28 @@ def data():
 @dashboard_bp.route('/api/metrics/batch')
 def metrics_batch():
     """
-    Возвращает данные по всем метрикам для batch-обновления.
-    """
-    return jsonify(MetricsService.get_all_metrics())
+    Возвращает данные в том же формате, что /dashboard_data """
+    try:
+        kpi_data = MetricsService.get_metrics_data()
+        history_data = MetricsService.get_metrics_history()
+        
+        prominent = kpi_data["prominent"]
+        for key in prominent:
+            if key not in history_data:
+                history_data[key] = []
+        
+        response_data = {
+            "prominent": prominent,
+            "metrics": kpi_data["metrics"],
+            "history": history_data,
+            "config": DEFAULT_METRICS_CONFIG,
+            "error": kpi_data.get("error"),
+        }
+        return jsonify(response_data)
+    except Exception as e:
+        return jsonify({
+            "error": f"Failed to load batch metrics: {str(e)}"
+        }), 500
 
 @dashboard_bp.route('/api/metrics/history')
 def metrics_history():

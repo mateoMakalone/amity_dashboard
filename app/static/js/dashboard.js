@@ -260,49 +260,88 @@ async function loadSectionData(sectionName) {
             return;
         }
         
-        // Загружаем данные для каждой метрики
-        const metricPromises = sectionMetrics.map(async (metricId) => {
+        // Попытка загрузить историю сразу для всех метрик секции
+        let batchLoaded = false;
+        if (sectionMetrics.length > 0) {
             try {
-                const metricData = await loadMetricData(metricId);
-                return { id: metricId, data: metricData };
-            } catch (error) {
-                console.error(`Failed to load metric ${metricId}:`, error);
-                return { id: metricId, data: null, error: error.message };
-            }
-        });
-        
-        const results = await Promise.all(metricPromises);
-
-        results.forEach(result => {
-            const existingCard = document.getElementById(`metric-${result.id}`);
-            if (existingCard) {
-                // Если карточка уже существует, обновляем её
-                if (result.data) {
-                    updateMetricCard(result.id, result.data);
-                } else if (result.error) {
-                    existingCard.innerHTML = `<div class="metric-header"><h4 class="metric-title">${result.id}</h4></div><div class="metric-error">Ошибка: ${result.error}</div>`;
-                }
-            } else {
-                // Если карточки нет, создаём новую и добавляем
-                const metricCard = createMetricCard(result.id, result.data, result.error);
-                content.appendChild(metricCard);
-                // Отрисовываем графики после добавления новой карточки
-                if (result.data && result.data.history && result.data.history.result && result.data.history.result.length > 0) {
-                    const config = result.data.config;
-                    const history = result.data.history;
-                    const metricId = result.id;
-                    const resultObj = history.result[0];
-                    if (resultObj.values && resultObj.values.length > 0) {
-                        if (config.type.includes('trend')) {
-                            renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+                const params = new URLSearchParams({
+                    interval: currentInterval.toString(),
+                    metrics: sectionMetrics.join(',')
+                });
+                const resp = await fetch(`/api/metrics/history?${params}`);
+                const batchData = await resp.json();
+                if (batchData.status === 'success' && batchData.data && Array.isArray(batchData.data.result)) {
+                    batchLoaded = true;
+                    const results = batchData.data.result;
+                    results.forEach(item => {
+                        const metricId = item.metric.__name__;
+                        const metricConfig = allMetrics[metricId];
+                        const metricHistory = { result: [{ values: item.values }] };
+                        const metricData = { config: metricConfig, history: metricHistory, debug: debugMode ? item : null };
+                        const existingCard = document.getElementById(`metric-${metricId}`);
+                        if (existingCard) {
+                            updateMetricCard(metricId, metricData);
+                        } else {
+                            const metricCard = createMetricCard(metricId, metricData, null);
+                            content.appendChild(metricCard);
+                            if (metricData.history && metricData.history.result && metricData.history.result.length > 0) {
+                                const historyRes = metricData.history.result[0];
+                                if (historyRes.values && historyRes.values.length > 0) {
+                                    if (metricConfig.type.includes('trend')) {
+                                        renderTrendChart(metricConfig, historyRes.values, `trend-${metricId}`);
+                                    }
+                                    if (metricConfig.type.includes('bar')) {
+                                        renderBarChart(metricConfig, historyRes.values, `bar-${metricId}`);
+                                    }
+                                }
+                            }
                         }
-                        if (config.type.includes('bar')) {
-                            renderBarChart(config, resultObj.values, `bar-${metricId}`);
+                    });
+                }
+            } catch (e) {
+                console.error('Batch metrics load failed:', e);
+            }
+        }
+        if (!batchLoaded) {
+            // Фолбек: загружаем данные для каждой метрики по отдельности
+            const metricPromises = sectionMetrics.map(async (metricId) => {
+                try {
+                    const metricData = await loadMetricData(metricId);
+                    return { id: metricId, data: metricData };
+                } catch (error) {
+                    console.error(`Failed to load metric ${metricId}:`, error);
+                    return { id: metricId, data: null, error: error.message };
+                }
+            });
+            const results = await Promise.all(metricPromises);
+            results.forEach(result => {
+                const existingCard = document.getElementById(`metric-${result.id}`);
+                if (existingCard) {
+                    if (result.data) {
+                        updateMetricCard(result.id, result.data);
+                    } else if (result.error) {
+                        existingCard.innerHTML = `<div class="metric-header"><h4 class="metric-title">${result.id}</h4></div><div class="metric-error">Ошибка: ${result.error}</div>`;
+                    }
+                } else {
+                    const metricCard = createMetricCard(result.id, result.data, result.error);
+                    content.appendChild(metricCard);
+                    if (result.data && result.data.history && result.data.history.result && result.data.history.result.length > 0) {
+                        const config = result.data.config;
+                        const history = result.data.history;
+                        const metricId = result.id;
+                        const resultObj = history.result[0];
+                        if (resultObj.values && resultObj.values.length > 0) {
+                            if (config.type.includes('trend')) {
+                                renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+                            }
+                            if (config.type.includes('bar')) {
+                                renderBarChart(config, resultObj.values, `bar-${metricId}`);
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
         
     } catch (error) {
         console.error(`Failed to load section ${sectionName}:`, error);

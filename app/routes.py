@@ -155,6 +155,48 @@ def metric_history(metric_id):
             "error": f"Failed to get metric history: {str(e)}"
         }), 500
 
+# Новый batch‑эндпоинт: возвращает историю сразу по нескольким метрикам
+@dashboard_bp.route("/api/metrics/history")
+def metrics_history():
+    """
+    Возвращает истории сразу по нескольким метрикам за указанный интервал.
+    Принимает параметры:
+      metrics — список метрик через запятую (обязательный);
+      interval — окно в минутах (по умолчанию 30).
+    """
+    try:
+        metrics_param = request.args.get("metrics", "")
+        interval = request.args.get("interval", "30")
+        try:
+            interval_minutes = int(interval)
+        except ValueError:
+            interval_minutes = 30
+        # Разбиваем строку на список метрик
+        metric_ids = [m.strip() for m in metrics_param.split(',') if m.strip()]
+        now = int(time.time())
+        start_time = now - interval_minutes * 60
+        history = MetricsService.get_metrics_history()
+        results = []
+        for metric_id in metric_ids:
+            # Пропускаем неизвестные метрики
+            if metric_id not in ALL_METRICS:
+                continue
+            values = history.get(metric_id, [])
+            filtered = [v for v in values if v[0] >= start_time]
+            results.append({
+                "metric": {"__name__": metric_id},
+                "values": [[ts, val] for ts, val in filtered]
+            })
+        return jsonify({
+            "status": "success",
+            "data": {"result": results}
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": f"Failed to get metrics history: {str(e)}"
+        }), 500
+
 @dashboard_bp.route("/api/history")
 def metric_history_api():
     metric = request.args.get("metric")

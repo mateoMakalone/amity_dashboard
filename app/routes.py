@@ -143,7 +143,7 @@ def metric_history(metric_id):
             "data": {
                 "result": [{
                     "metric": {"__name__": metric_id},
-                    "values": [[ts, str(val)] for ts, val in filtered]
+                    "values": [[ts, val] for ts, val in filtered]
                 }]
             }
         }
@@ -167,7 +167,7 @@ def metric_history_api():
         "data": {
             "result": [{
                 "metric": {"__name__": metric},
-                "values": [[d["ts"], str(d["value"])] for d in values]
+                "values": [[ts, val] for ts, val in values]
             }]
         }
     }

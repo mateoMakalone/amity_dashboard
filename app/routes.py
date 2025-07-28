@@ -53,11 +53,9 @@ def data():
 @dashboard_bp.route('/api/metrics/batch')
 def metrics_batch():
     """
-    Возвращает текущие значения всех метрик
-    Используется фронтендом для автообновлений (update.js).
+    Возвращает данные по всем метрикам для batch-обновления.
     """
-    metrics = MetricsService.get_all_metrics()
-    return jsonify(metrics)
+    return jsonify(MetricsService.get_all_metrics())
 
 @dashboard_bp.route('/api/metrics/history')
 def metrics_history():

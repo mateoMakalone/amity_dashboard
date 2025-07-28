@@ -146,15 +146,22 @@ class MetricsService:
     @classmethod
     def get_all_metrics(cls):
         """
-        Возвращает последние значения всех метрик (словарь metric_name -> value).
+        Возвращает последние значения и историю для всех метрик.
         """
         with lock:
-            return dict(metrics_data["metrics"])
+            data = {}
+            for name, value in metrics_data["metrics"].items():
+                history = metrics_data["history"].get(name, [])
+                data[name] = {
+                    "current": value,
+                    "history": list(history)
+                }
+            return data
 
     @classmethod
     def get_metrics_history(cls):
         """
-        Возвращает историю всех метрик (словарь metric_name -> [(timestamp, value), ...]).
+        Возвращает историю всех метрик.
         """
         with lock:
             return {name: list(history) for name, history in metrics_data["history"].items()}

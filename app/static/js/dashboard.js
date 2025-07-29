@@ -9,6 +9,8 @@ let allMetrics = {};
 let timeIntervals = [];
 let currentInterval = 30; // минуты
 let debugMode = false;
+let firstLoad = true;
+
 let updateTimer = null;
 let isExporting = false;
 
@@ -140,15 +142,17 @@ function toggleDebugMode() {
  * Загружает данные для всех секций
  */
 async function loadSectionsData() {
-    try {
-        showLoading();
-        updateStatus('loading');
-        
-        // Рендерим секции только при первой загрузке, чтобы избежать мерцания
         const container = document.getElementById('sections-container');
-        if (container && !container.hasChildNodes()) {
+    const isFirst = firstLoad && container && !container.hasChildNodes();
+    
+    try {
+               if (isFirst) {
+            showLoading();
+            updateStatus('loading');
             renderSections();
         }
+
+       }
         
         // Загружаем данные для каждой секции
         const sectionPromises = Object.keys(sectionsConfig).map(async (sectionName) => {
@@ -164,20 +168,20 @@ async function loadSectionsData() {
         showError('Ошибка загрузки данных: ' + error.message);
         updateStatus('error');
     } finally {
-        hideLoading();
+               if (isFirst) {
+            hideLoading();
+            firstLoad = false;
+       }
     }
 }
 
-/**
- * Рендерит секции на странице
- */
-function renderSections() {
+/** Рендерит секции на странице
+ function renderSections() {
     const container = document.getElementById('sections-container');
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
-    // Сортируем секции: KPI всегда первая
+ всегда первая
     const sectionNames = Object.keys(sectionsConfig);
     sectionNames.sort((a, b) => {
         if (a === 'KPI') return -1;

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Amity Metrics Report</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
+        .metric-block { background: white; margin-bottom: 30px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .metric-title { font-size: 1.2em; margin-bottom: 10px; }
+        .metric-stats { color: #555; margin-bottom: 10px; }
+        .metric-chart { height: 250px; }
+    </style>
+</head>
+<body>
+    <h1>Отчёт по метрикам Amity</h1>
+    {% for name, values in history.items() %}
+    <div class="metric-block">
+        <div class="metric-title">{{ name }}</div>
+        <div class="metric-stats">
+            Старт: {{ stats[name].start }},
+            Макс: {{ stats[name].max }},
+            Среднее: {{ '%.2f'|format(stats[name].avg) }}
+        </div>
+        <div id="chart-{{ name }}" class="metric-chart"></div>
+    </div>
+    {% endfor %}
+    <script>
+    var allHistory = {{ history|tojson|safe }};
+    Object.keys(allHistory).forEach(function(name) {
+        var values = allHistory[name];
+        var x = values.map(function(v) { return new Date(v[0] * 1000); });
+        var y = values.map(function(v) { return parseFloat(v[1]); });
+        Plotly.newPlot('chart-' + name, [{
+            x: x,
+            y: y,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: name
+        }], {
+            title: name,
+            height: 250
+        });
+    });
+    </script>
+</body>
+</html> 

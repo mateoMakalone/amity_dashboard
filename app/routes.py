@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify, request
 import time
 from .config import SECTIONS, ALL_METRICS, TIME_INTERVALS, KPI_METRICS_CONFIG
 from .metrics import MetricsService
+from flask import jsonify, request
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -48,6 +49,45 @@ def dashboard():
 @dashboard_bp.route("/data")
 def data():
     return jsonify(MetricsService.get_metrics_data())
+
+@dashboard_bp.route('/api/metrics/batch')
+def metrics_batch():
+    """
+    Возвращает данные в том же формате, что /dashboard_data """
+    try:
+        kpi_data = MetricsService.get_metrics_data()
+        history_data = MetricsService.get_metrics_history()
+        
+        prominent = kpi_data["prominent"]
+        for key in prominent:
+            if key not in history_data:
+                history_data[key] = []
+        
+        response_data = {
+            "prominent": prominent,
+            "metrics": kpi_data["metrics"],
+            "history": history_data,
+            "config": DEFAULT_METRICS_CONFIG,
+            "error": kpi_data.get("error"),
+        }
+        return jsonify(response_data)
+    except Exception as e:
+        return jsonify({
+            "error": f"Failed to load batch metrics: {str(e)}"
+        }), 500
+
+@dashboard_bp.route('/api/metrics/history')
+def metrics_history():
+    """
+    Возвращает историю всех метрик или выбранной секции.
+    Используется ленивой загрузкой секций на фронтенде.
+    """
+    section = request.args.get('section')
+    history = MetricsService.get_metrics_history()
+    if section:
+        filtered = {k: v for k, v in history.items() if k.startswith(section)}
+        return jsonify(filtered)
+    return jsonify(history)
 
 @dashboard_bp.route("/dashboard_data")
 def dashboard_data():

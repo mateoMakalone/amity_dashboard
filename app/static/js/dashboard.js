@@ -12,6 +12,7 @@ let debugMode = false;
 let updateTimer = null;
 let isExporting = false;
 
+let firstLoad = true;
 // Форматирование чисел
 const formatFunctions = {
     fixed0: x => x.toFixed(0),
@@ -141,14 +142,14 @@ function toggleDebugMode() {
  */
 async function loadSectionsData() {
     try {
-        showLoading();
-        updateStatus('loading');
-        
-        // Рендерим секции только при первой загрузке, чтобы избежать мерцания
-        const container = document.getElementById('sections-container');
-        if (container && !container.hasChildNodes()) {
-            renderSections();
-        }
+
+ const container = document.getElementById('sections-container');
+const isFirst = firstLoad && container && !container.hasChildNodes();
+i f (isFirst) {
+    showLoading();
+    updateStatus('loading');
+    renderSections();
+}   }
         
         // Загружаем данные для каждой секции
         const sectionPromises = Object.keys(sectionsConfig).map(async (sectionName) => {
@@ -164,7 +165,10 @@ async function loadSectionsData() {
         showError('Ошибка загрузки данных: ' + error.message);
         updateStatus('error');
     } finally {
-        hideLoading();
+      if (firstLoad) {
+            hideLoading();
+            firstLoad = false;
+        }
     }
 }
 

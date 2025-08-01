@@ -145,11 +145,11 @@ async function loadSectionsData() {
 
  const container = document.getElementById('sections-container');
 const isFirst = firstLoad && container && !container.hasChildNodes();
-i f (isFirst) {
+    if (isFirst) {
     showLoading();
     updateStatus('loading');
     renderSections();
-}   }
+} 
         
         // Загружаем данные для каждой секции
         const sectionPromises = Object.keys(sectionsConfig).map(async (sectionName) => {

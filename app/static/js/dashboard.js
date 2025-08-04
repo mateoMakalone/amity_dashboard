@@ -50,6 +50,7 @@ async function initDashboard() {
     } catch (error) {
         console.error('Dashboard initialization failed:', error);
         showError('Ошибка инициализации дашборда: ' + error.message);
+        hideLoading();
     }
 }
 
@@ -254,6 +255,12 @@ async function loadSectionData(sectionName) {
         const content = document.getElementById(`section-content-${sectionName}`);
         
         if (!content) return;
+        
+        // Удаляем индикатор загрузки в секции
+        const loadingIndicator = content.querySelector('.loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
         
         // Если в секции нет метрик — показываем stub и выходим
         if (sectionMetrics.length === 0) {

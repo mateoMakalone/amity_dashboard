@@ -2,34 +2,157 @@
 import json, os, time
 from collections import deque
 
-CACHE_FILE = '/tmp/metrics_cache.json'
+# Определяем путь кэша в зависимости от ОС
+if os.name == 'nt':  # Windows
+    CACHE_FILE = os.path.join(os.getcwd(), 'metrics_cache.json')
+else:  # Unix/Linux
+    CACHE_FILE = '/tmp/metrics_cache.json'
 SAVE_INTERVAL = 60
 last_save_time = 0
 
 def load_cache_from_file():
+    """
+    Загружает кэш из файла с полной обработкой ошибок
+    """
     try:
-        with open(CACHE_FILE, 'r') as f:
-            data = json.load(f)
+        # Проверяем существование файла
+        if not os.path.exists(CACHE_FILE):
+            print(f"[DEBUG] Cache file {CACHE_FILE} does not exist, starting with empty cache")
+            return
+        
+        # Проверяем размер файла
+        file_size = os.path.getsize(CACHE_FILE)
+        if file_size == 0:
+            print(f"[DEBUG] Cache file {CACHE_FILE} is empty, starting with empty cache")
+            return
+        
+        # Читаем файл
+        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+            
+        # Проверяем, что файл не пустой после чтения
+        if not content:
+            print(f"[DEBUG] Cache file {CACHE_FILE} is empty after reading, starting with empty cache")
+            return
+            
+        # Парсим JSON
+        data = json.loads(content)
+        
+        # Валидируем данные кэша
+        if not validate_cache_data(data):
+            print(f"[WARNING] Cache file {CACHE_FILE} contains invalid data structure, starting with empty cache")
+            return
+            
+        metrics = data.get("metrics", {})
+        history = data.get("history", {})
+        
+        # Загружаем данные в глобальную структуру
         with lock:
-            metrics_data["metrics"] = data.get("metrics", {})
-            metrics_data["history"] = {name: deque(vals, maxlen=HISTORY_POINTS) for name, vals in data.get("history", {}).items()}
-        print(f"[DEBUG] Cache loaded from {CACHE_FILE}")
+            metrics_data["metrics"] = metrics
+            # Создаем deque для каждой метрики с правильным maxlen
+            for name, vals in history.items():
+                if isinstance(vals, list):
+                    # Конвертируем список в deque с ограничением размера
+                    deq = deque(vals, maxlen=HISTORY_POINTS)
+                    metrics_data["history"][name] = deq
+                else:
+                    print(f"[WARNING] Invalid history data for {name}, skipping")
+                    
+        print(f"[DEBUG] Cache loaded from {CACHE_FILE}: {len(metrics)} metrics, {len(history)} history entries")
+        
     except FileNotFoundError:
-        print(f"[DEBUG] No cache file {CACHE_FILE}")
+        print(f"[DEBUG] Cache file {CACHE_FILE} not found, starting with empty cache")
+    except PermissionError as e:
+        print(f"[WARNING] Permission error reading cache file {CACHE_FILE}: {e}")
+    except json.JSONDecodeError as e:
+        print(f"[WARNING] Invalid JSON in cache file {CACHE_FILE}: {e}")
+        # Пытаемся создать резервную копию поврежденного файла
+        try:
+            backup_file = f"{CACHE_FILE}.corrupted.{int(time.time())}"
+            os.rename(CACHE_FILE, backup_file)
+            print(f"[INFO] Corrupted cache file moved to {backup_file}")
+        except Exception as backup_error:
+            print(f"[ERROR] Failed to backup corrupted cache file: {backup_error}")
+    except Exception as e:
+        print(f"[ERROR] Unexpected error loading cache from {CACHE_FILE}: {e}")
 
 def save_cache_to_file():
+    """
+    Сохраняет кэш в файл с полной обработкой ошибок
+    """
     global last_save_time
     now = time.time()
-    if now - last_save_time >= SAVE_INTERVAL:
+    
+    # Проверяем интервал сохранения
+    if now - last_save_time < SAVE_INTERVAL:
+        return
+        
+    try:
+        # Подготавливаем данные для сохранения
         with lock:
             data = {
                 "metrics": metrics_data["metrics"],
-                "history": {name: list(deq) for name, deq in metrics_data["history"].items()}
+                "history": {name: list(deq) for name, deq in metrics_data["history"].items()},
+                "last_updated": metrics_data["last_updated"],
+                "cache_version": "1.0"  # Для будущей совместимости
             }
-        with open(CACHE_FILE, 'w') as f:
-            json.dump(data, f)
+        
+        # Создаем временный файл для атомарной записи
+        temp_file = f"{CACHE_FILE}.tmp"
+        
+        # Записываем во временный файл
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        # Атомарно перемещаем временный файл в целевой
+        os.replace(temp_file, CACHE_FILE)
+        
         last_save_time = now
-        print(f"[DEBUG] Cache saved to {CACHE_FILE}")
+        print(f"[DEBUG] Cache saved to {CACHE_FILE}: {len(data['metrics'])} metrics, {len(data['history'])} history entries")
+        
+    except PermissionError as e:
+        print(f"[WARNING] Permission error saving cache to {CACHE_FILE}: {e}")
+    except OSError as e:
+        print(f"[WARNING] OS error saving cache to {CACHE_FILE}: {e}")
+        # Пытаемся создать кэш в альтернативном месте
+        try:
+            alt_cache_file = os.path.join(os.getcwd(), 'metrics_cache.json')
+            with open(alt_cache_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"[INFO] Cache saved to alternative location: {alt_cache_file}")
+        except Exception as alt_error:
+            print(f"[ERROR] Failed to save cache to alternative location: {alt_error}")
+    except Exception as e:
+        print(f"[ERROR] Unexpected error saving cache to {CACHE_FILE}: {e}")
+
+def ensure_cache_directory():
+    """
+    Убеждается, что директория для кэша существует и доступна для записи
+    """
+    global CACHE_FILE
+    try:
+        cache_dir = os.path.dirname(CACHE_FILE)
+        if cache_dir and not os.path.exists(cache_dir):
+            os.makedirs(cache_dir, exist_ok=True)
+            print(f"[DEBUG] Created cache directory: {cache_dir}")
+        
+        # Проверяем права на запись
+        if os.path.exists(cache_dir):
+            test_file = os.path.join(cache_dir, '.test_write')
+            try:
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                print(f"[DEBUG] Cache directory {cache_dir} is writable")
+            except Exception as e:
+                print(f"[WARNING] Cache directory {cache_dir} is not writable: {e}")
+                # Пытаемся использовать альтернативную директорию
+                alt_dir = os.getcwd()
+                CACHE_FILE = os.path.join(alt_dir, 'metrics_cache.json')
+                print(f"[INFO] Using alternative cache location: {CACHE_FILE}")
+                
+    except Exception as e:
+        print(f"[ERROR] Failed to ensure cache directory: {e}")
 
 import threading
 import time
@@ -205,6 +328,10 @@ def update_metrics():
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
                 print(f"[DEBUG] update_metrics: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")
+                
+            # Сохраняем кэш после каждого обновления метрик
+            save_cache_to_file()
+            
         except Exception as e:
             with lock:
                 metrics_data["last_error"] = str(e)
@@ -223,11 +350,86 @@ def get_all_metric_names():
                 names.add(pattern)
     return names
 
+def cleanup_old_cache_files():
+    """
+    Очищает старые поврежденные файлы кэша
+    """
+    try:
+        cache_dir = os.path.dirname(CACHE_FILE)
+        if not cache_dir:
+            cache_dir = os.getcwd()
+            
+        # Ищем файлы с паттерном .corrupted.*
+        for filename in os.listdir(cache_dir):
+            if filename.startswith('metrics_cache.json.corrupted.'):
+                file_path = os.path.join(cache_dir, filename)
+                file_age = time.time() - os.path.getmtime(file_path)
+                
+                # Удаляем файлы старше 24 часов
+                if file_age > 86400:  # 24 часа в секундах
+                    try:
+                        os.remove(file_path)
+                        print(f"[DEBUG] Removed old corrupted cache file: {filename}")
+                    except Exception as e:
+                        print(f"[WARNING] Failed to remove old cache file {filename}: {e}")
+                        
+    except Exception as e:
+        print(f"[WARNING] Failed to cleanup old cache files: {e}")
+
+def validate_cache_data(data):
+    """
+    Валидирует данные кэша и возвращает True если данные корректны
+    """
+    try:
+        if not isinstance(data, dict):
+            return False
+            
+        # Проверяем обязательные поля
+        required_fields = ['metrics', 'history']
+        for field in required_fields:
+            if field not in data:
+                return False
+                
+        # Проверяем типы данных
+        if not isinstance(data['metrics'], dict):
+            return False
+            
+        if not isinstance(data['history'], dict):
+            return False
+            
+        # Проверяем структуру истории
+        for metric_name, history_data in data['history'].items():
+            if not isinstance(history_data, list):
+                return False
+                
+            # Проверяем каждый элемент истории
+            for point in history_data:
+                if not isinstance(point, (list, tuple)) or len(point) != 2:
+                    return False
+                    
+                timestamp, value = point
+                if not isinstance(timestamp, (int, float)):
+                    return False
+                    
+        return True
+        
+    except Exception:
+        return False
+
 
 def start_metrics_thread():
-    load_cache_from_file()
     """
     Запускает поток обновления метрик
     """
+    # Очищаем старые поврежденные файлы кэша
+    cleanup_old_cache_files()
+    
+    # Инициализируем директорию кэша
+    ensure_cache_directory()
+    
+    # Загружаем кэш из файла
+    load_cache_from_file()
+    
+    # Запускаем поток обновления метрик
     thread = threading.Thread(target=update_metrics, daemon=True)
     thread.start()

@@ -23,6 +23,11 @@ const formatFunctions = {
     mb: x => (x / 1024 / 1024).toFixed(1)
 };
 
+// --- Добавляем функцию нормализации id ---
+function normalizeId(name) {
+    return name.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
 /**
  * Инициализация дашборда
  */
@@ -247,40 +252,34 @@ function renderSections() {
  * Создает секцию метрик
  */
 function createSection(sectionName) {
+    const normId = normalizeId(sectionName);
     const section = document.createElement('div');
     section.className = 'section';
-    section.id = `section-${sectionName}`;
-    
+    section.id = `section-${normId}`;
+
     // Заголовок секции
     const header = document.createElement('div');
     header.className = 'section-header';
     header.addEventListener('click', () => toggleSection(sectionName));
-    
+
     const title = document.createElement('h3');
     title.className = 'section-title';
     title.textContent = sectionName;
-    
+
     const toggle = document.createElement('span');
     toggle.className = 'section-toggle';
     toggle.textContent = '▼';
-    
+
     header.appendChild(title);
     header.appendChild(toggle);
-    
-    // Контент секции
+    section.appendChild(header);
+
+    // --- ВАЖНО: создаем контейнер для метрик ---
     const content = document.createElement('div');
     content.className = 'section-content';
-    content.id = `section-content-${sectionName}`;
-    
-    // Добавляем индикатор загрузки
-    const loading = document.createElement('div');
-    loading.className = 'loading-indicator';
-    loading.innerHTML = '<div class="spinner"></div> Загрузка метрик...';
-    content.appendChild(loading);
-    
-    section.appendChild(header);
+    content.id = `section-content-${normId}`;
     section.appendChild(content);
-    
+
     return section;
 }
 
@@ -288,7 +287,8 @@ function createSection(sectionName) {
  * Переключает сворачивание/разворачивание секции
  */
 function toggleSection(sectionName) {
-    const section = document.getElementById(`section-${sectionName}`);
+    const normId = normalizeId(sectionName);
+    const section = document.getElementById(`section-${normId}`);
     if (section) {
         section.classList.toggle('collapsed');
     }
@@ -298,12 +298,13 @@ function toggleSection(sectionName) {
  * Загружает данные для конкретной секции
  */
 async function loadSectionData(sectionName) {
+    const normId = normalizeId(sectionName);
     console.log(`📥 Loading data for section: ${sectionName}`);
     try {
         const sectionMetrics = sectionsConfig[sectionName] || [];
         console.log(`📊 Section ${sectionName} has ${sectionMetrics.length} metrics:`, sectionMetrics);
         
-        const content = document.getElementById(`section-content-${sectionName}`);
+        const content = document.getElementById(`section-content-${normId}`);
         console.log(`🎯 Section content element:`, content ? 'found' : 'not found');
         
         if (!content) {
@@ -382,7 +383,7 @@ async function loadSectionData(sectionName) {
     } catch (error) {
         console.error(`❌ Failed to load section ${sectionName}:`, error);
         console.error('Error stack:', error.stack);
-        const content = document.getElementById(`section-content-${sectionName}`);
+        const content = document.getElementById(`section-content-${normId}`);
         if (content) {
             content.innerHTML = `<div class="metric-error">Ошибка загрузки секции: ${error.message}</div>`;
         }

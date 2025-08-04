@@ -179,11 +179,11 @@ async function loadSectionsData() {
     
     try {
         const container = document.getElementById('sections-container');
-        const isFirst = firstLoad && container && !container.hasChildNodes();
-        console.log('🔄 First load:', firstLoad, 'Container empty:', !container.hasChildNodes());
+        const isFirst = firstLoad && container;
+        console.log('🔄 First load:', firstLoad, 'Container exists:', !!container);
         
         if (isFirst) {
-            console.log('🔄 First load detected, showing loading indicator...');
+            console.log('🔄 First load detected, showing loading indicator and rendering sections...');
             showLoading();
             updateStatus('loading');
             renderSections();
@@ -441,136 +441,89 @@ function createMetricCard(metricId, data, error) {
     const card = document.createElement('div');
     card.className = 'metric-card';
     card.id = `metric-${metricId}`;
-    
-    if (error) {
-        card.innerHTML = `
-            <div class="metric-header">
-                <h4 class="metric-title">${metricId}</h4>
-            </div>
-            <div class="metric-error">Ошибка: ${error}</div>
-        `;
-        return card;
-    }
-    
-    if (!data || !data.config) {
-        card.innerHTML = `
-            <div class="metric-header">
-                <h4 class="metric-title">${metricId}</h4>
-            </div>
-            <div class="metric-error">Нет данных</div>
-        `;
-        return card;
-    }
-    
-    const config = data.config;
-    const history = data.history;
-    const debug = data.debug;
-    
-    // Проверка на отсутствие данных
-    if (!history || !history.result || history.result.length === 0 || !history.result[0].values || history.result[0].values.length === 0) {
-        card.innerHTML = `
-            <div class="metric-header">
-                <h4 class="metric-title">${config.label || metricId}</h4>
-            </div>
-            <div class="metric-error">Нет данных за выбранный период</div>
-        `;
-        return card;
-    }
-    
-    // Определяем статус
-    const status = getMetricStatus(config, history);
-    
+
     // Заголовок карточки
     const header = document.createElement('div');
     header.className = 'metric-header';
     
     const title = document.createElement('h4');
     title.className = 'metric-title';
-    title.textContent = config.label || metricId;
+    title.textContent = data?.config?.label || metricId;
     
-    const valueContainer = document.createElement('div');
-    valueContainer.className = 'metric-value-container';
+    const status = document.createElement('span');
+    status.className = 'metric-status';
     
-    const value = document.createElement('span');
-    value.className = 'metric-value';
-    value.style.color = status.color;
-
-    // Получаем текущее значение
-    const currentValue = getCurrentValue(history);
-    if (currentValue !== null && currentValue !== undefined) {
-        const formattedValue = formatValue(currentValue, config.format);
-        value.textContent = formattedValue;
+    if (error) {
+        status.textContent = '❌';
+        status.title = 'Ошибка загрузки';
+    } else if (data?.config) {
+        const statusInfo = getMetricStatus(data.config, data.history);
+        status.textContent = statusInfo.icon;
+        status.title = statusInfo.message;
+        status.className = `metric-status status-${statusInfo.level}`;
     } else {
-        value.textContent = 'N/A';
+        status.textContent = '⚠️';
+        status.title = 'Нет данных';
     }
-
-    // Присваиваем ID, чтобы можно было обновлять значение без пересоздания карточки
-    value.id = `metric-value-${metricId}`;
-
-    const unit = document.createElement('span');
-    unit.className = 'metric-unit';
-    unit.textContent = config.unit || '';
-    // Присваиваем ID для единицы измерения (при обновлении может измениться цвет)
-    unit.id = `metric-unit-${metricId}`;
-    
-    valueContainer.appendChild(value);
-    valueContainer.appendChild(unit);
     
     header.appendChild(title);
-    header.appendChild(valueContainer);
-    
-    // Контейнер для графиков
-    const chartsContainer = document.createElement('div');
-    chartsContainer.className = 'metric-charts';
-    
-    // Рендерим графики в зависимости от типа
-    if (config.type.includes('trend')) {
-        const trendChart = document.createElement('div');
-        trendChart.className = 'metric-trend-chart';
-        trendChart.id = `trend-${metricId}`;
-        chartsContainer.appendChild(trendChart);
-    }
-    
-    if (config.type.includes('bar')) {
-        const barChart = document.createElement('div');
-        barChart.className = 'metric-bar-chart';
-        barChart.id = `bar-${metricId}`;
-        chartsContainer.appendChild(barChart);
-    }
-    
+    header.appendChild(status);
     card.appendChild(header);
-    card.appendChild(chartsContainer);
-    
-    // Рендерим графики (Plotly) всегда, если есть данные
-    if (history && history.result && history.result.length > 0) {
-        const result = history.result[0];
-        if (result.values && result.values.length > 0) {
-            if (config.type.includes('trend')) {
-                renderTrendChart(config, result.values, `trend-${metricId}`);
-            }
-            if (config.type.includes('bar')) {
-                renderBarChart(config, result.values, `bar-${metricId}`);
-            }
+
+    // Основное содержимое
+    const content = document.createElement('div');
+    content.className = 'metric-content';
+
+    if (error) {
+        content.innerHTML = `<div class="metric-error">Ошибка: ${error}</div>`;
+    } else if (data?.history) {
+        const currentValue = getCurrentValue(data.history);
+        console.log(`📊 Creating card for ${metricId}: currentValue=${currentValue}, config=`, data.config);
+        
+        if (currentValue !== null) {
+            const formattedValue = formatValue(currentValue, data.config.format || 'fixed2');
+            const unit = data.config.unit || '';
+            
+            const valueDisplay = document.createElement('div');
+            valueDisplay.className = 'metric-value';
+            valueDisplay.innerHTML = `
+                <span class="value-number">${formattedValue}</span>
+                ${unit ? `<span class="value-unit">${unit}</span>` : ''}
+            `;
+            content.appendChild(valueDisplay);
+            
+            console.log(`✅ Value displayed for ${metricId}: ${formattedValue} ${unit}`);
+        } else {
+            const noDataDisplay = document.createElement('div');
+            noDataDisplay.className = 'metric-no-data';
+            noDataDisplay.textContent = 'Нет данных';
+            content.appendChild(noDataDisplay);
+            console.warn(`⚠️ No current value for ${metricId}`);
         }
+
+        // Контейнеры для графиков
+        if (data.config.type.includes('trend')) {
+            const trendContainer = document.createElement('div');
+            trendContainer.id = `trend-${metricId}`;
+            trendContainer.className = 'metric-chart';
+            content.appendChild(trendContainer);
+        }
+        
+        if (data.config.type.includes('bar')) {
+            const barContainer = document.createElement('div');
+            barContainer.id = `bar-${metricId}`;
+            barContainer.className = 'metric-chart';
+            content.appendChild(barContainer);
+        }
+    } else {
+        const noDataDisplay = document.createElement('div');
+        noDataDisplay.className = 'metric-no-data';
+        noDataDisplay.textContent = 'Нет данных';
+        content.appendChild(noDataDisplay);
+        console.warn(`⚠️ No data for ${metricId}`);
     }
-    
-    // Debug-информация (убрано по просьбе пользователя)
-    // if (debugMode && debug) {
-    //     const debugInfo = document.createElement('div');
-    //     debugInfo.className = 'debug-info';
-    //     const historyData = debug.data?.result?.[0]?.values || [];
-    //     const values = historyData.map(([_, v]) => v).filter(v => v !== null && v !== undefined);
-    //     const min = values.length > 0 ? Math.min(...values) : 'N/A';
-    //     const max = values.length > 0 ? Math.max(...values) : 'N/A';
-    //     const count = values.length;
-    //     debugInfo.innerHTML = `
-    //         <strong>Debug Info:</strong><br>
-    //         <pre>JSON: ${JSON.stringify(debug, null, 2)}</pre>
-    //         <strong>Stats:</strong> min: ${min}, max: ${max}, count: ${count}
-    //     `;
-    //     card.appendChild(debugInfo);
-    // }
-    
+
+    card.appendChild(content);
     return card;
 }
 
@@ -580,36 +533,81 @@ function createMetricCard(metricId, data, error) {
  */
 function updateMetricCard(metricId, data) {
     const card = document.getElementById(`metric-${metricId}`);
-    if (!card || !data || !data.config || !data.history) {
+    if (!card) {
+        console.warn(`⚠️ Card not found for update: ${metricId}`);
         return;
     }
-    const config = data.config;
-    const history = data.history;
 
-    // Обновляем значение
-    const valueEl = document.getElementById(`metric-value-${metricId}`);
-    if (valueEl) {
-        const currentValue = getCurrentValue(history);
-        if (currentValue !== null && currentValue !== undefined) {
-            const formatted = formatValue(currentValue, config.format);
-            valueEl.textContent = formatted;
-        } else {
-            valueEl.textContent = 'N/A';
-        }
-        // Обновляем цвет статуса
-        const status = getMetricStatus(config, history);
-        valueEl.style.color = status.color;
+    console.log(`🔄 Updating card for ${metricId}:`, data);
+
+    // Обновляем статус
+    const status = card.querySelector('.metric-status');
+    if (status && data?.config) {
+        const statusInfo = getMetricStatus(data.config, data.history);
+        status.textContent = statusInfo.icon;
+        status.title = statusInfo.message;
+        status.className = `metric-status status-${statusInfo.level}`;
     }
 
-    // Обновляем графики, если есть данные
-    if (history && history.result && history.result.length > 0) {
-        const resultObj = history.result[0];
-        if (resultObj.values && resultObj.values.length > 0) {
-            if (config.type.includes('trend')) {
-                renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+    // Обновляем значение
+    if (data?.history) {
+        const currentValue = getCurrentValue(data.history);
+        console.log(`📊 Updating value for ${metricId}: currentValue=${currentValue}`);
+        
+        const content = card.querySelector('.metric-content');
+        if (content) {
+            if (currentValue !== null) {
+                const formattedValue = formatValue(currentValue, data.config.format || 'fixed2');
+                const unit = data.config.unit || '';
+                
+                // Обновляем или создаем отображение значения
+                let valueDisplay = content.querySelector('.metric-value');
+                if (!valueDisplay) {
+                    valueDisplay = document.createElement('div');
+                    valueDisplay.className = 'metric-value';
+                    content.insertBefore(valueDisplay, content.firstChild);
+                }
+                
+                valueDisplay.innerHTML = `
+                    <span class="value-number">${formattedValue}</span>
+                    ${unit ? `<span class="value-unit">${unit}</span>` : ''}
+                `;
+                
+                console.log(`✅ Value updated for ${metricId}: ${formattedValue} ${unit}`);
+            } else {
+                // Показываем "Нет данных"
+                let noDataDisplay = content.querySelector('.metric-no-data');
+                if (!noDataDisplay) {
+                    noDataDisplay = document.createElement('div');
+                    noDataDisplay.className = 'metric-no-data';
+                    noDataDisplay.textContent = 'Нет данных';
+                    content.insertBefore(noDataDisplay, content.firstChild);
+                }
+                
+                // Удаляем старое отображение значения
+                const oldValueDisplay = content.querySelector('.metric-value');
+                if (oldValueDisplay) {
+                    oldValueDisplay.remove();
+                }
             }
-            if (config.type.includes('bar')) {
-                renderBarChart(config, resultObj.values, `bar-${metricId}`);
+
+            // Обновляем графики
+            if (data.history?.result?.[0]?.values) {
+                const values = data.history.result[0].values;
+                
+                if (data.config.type.includes('trend')) {
+                    const trendContainer = document.getElementById(`trend-${metricId}`);
+                    if (trendContainer) {
+                        renderTrendChart(data.config, values, `trend-${metricId}`);
+                    }
+                }
+                
+                if (data.config.type.includes('bar')) {
+                    const barContainer = document.getElementById(`bar-${metricId}`);
+                    if (barContainer) {
+                        renderBarChart(data.config, values, `bar-${metricId}`);
+                    }
+                }
             }
         }
     }
@@ -646,167 +644,232 @@ function getMetricStatus(config, history) {
  */
 function getCurrentValue(history) {
     if (!history || !history.result || history.result.length === 0) {
+        console.warn('⚠️ No history data for current value calculation');
         return null;
     }
     
     const result = history.result[0];
-    if (!result.values || result.values.length === 0) {
+    if (!result || !result.values || result.values.length === 0) {
+        console.warn('⚠️ No values in history result');
         return null;
     }
     
-    const lastPoint = result.values[result.values.length - 1];
-    // Значение приходит строкой из API, конвертируем в число
-    const val = lastPoint[1];
-    if (val === null || val === undefined) {
+    // Берем последнее значение из истории
+    const lastValue = result.values[result.values.length - 1];
+    if (!lastValue || lastValue.length < 2) {
+        console.warn('⚠️ Invalid last value format:', lastValue);
         return null;
     }
-    const parsed = typeof val === 'string' ? parseFloat(val) : val;
-    return isNaN(parsed) ? null : parsed;
+    
+    const value = lastValue[1];
+    console.log(`📊 Current value extracted: ${value} (type: ${typeof value})`);
+    
+    // Преобразуем в число, если это строка
+    if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        if (isNaN(parsed)) {
+            console.warn(`⚠️ Could not parse string value: ${value}`);
+            return null;
+        }
+        return parsed;
+    }
+    
+    return value;
 }
 
 /**
  * Форматирует значение метрики
  */
 function formatValue(value, format) {
-    // Если значение пустое – показываем N/A
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || isNaN(value)) {
         return 'N/A';
     }
-    // Приводим строковые значения к числам, иначе методы toFixed недоступны
-    let num = value;
-    if (typeof num === 'string') {
-        // пустая строка или непреобразуемое значение → N/A
-        const parsed = parseFloat(num);
-        if (!isNaN(parsed)) {
-            num = parsed;
+
+    try {
+        switch (format) {
+            case 'fixed0':
+                return value.toFixed(0);
+            case 'fixed1':
+                return value.toFixed(1);
+            case 'fixed2':
+                return value.toFixed(2);
+            case 'fixed3':
+                return value.toFixed(3);
+            case 'percent':
+                return Math.round(value * 100) + '%';
+            case 'mb':
+                const mbValue = value / 1024 / 1024;
+                return mbValue.toFixed(1) + ' МБ';
+            case 'kb':
+                const kbValue = value / 1024;
+                return kbValue.toFixed(1) + ' КБ';
+            case 'bytes':
+                if (value < 1024) return value.toFixed(0) + ' Б';
+                if (value < 1024 * 1024) return (value / 1024).toFixed(1) + ' КБ';
+                if (value < 1024 * 1024 * 1024) return (value / 1024 / 1024).toFixed(1) + ' МБ';
+                return (value / 1024 / 1024 / 1024).toFixed(1) + ' ГБ';
+            default:
+                return value.toString();
         }
+    } catch (error) {
+        console.error('Error formatting value:', value, format, error);
+        return value.toString();
     }
-    const formatter = formatFunctions[format] || formatFunctions.fixed2;
-    return formatter(num);
 }
 
 /**
  * Рендерит линейный график (trend)
  */
 function renderTrendChart(config, values, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container || !values || values.length === 0) {
+    if (!values || values.length === 0) {
+        console.warn(`⚠️ No data for trend chart: ${containerId}`);
         return;
     }
-    
-    const timestamps = values.map(([ts, _]) => new Date(ts * 1000));
-    // Приводим значения к числам, т.к. API возвращает строки
-    const dataValues = values.map(([_, v]) => {
-        const parsed = typeof v === 'string' ? parseFloat(v) : v;
-        return isNaN(parsed) ? null : parsed;
-    });
-    
-    const data = [{
-        x: timestamps,
-        y: dataValues,
-        type: 'scatter',
-        mode: 'lines',
-        line: {
-            color: config.color,
-            width: 2
-        },
-        fill: 'tonexty',
-        fillcolor: config.color + '20',
-        hovertemplate: '%{y:.3f}<extra></extra>'
-    }];
-    
-    const layout = {
-        margin: { t: 10, b: 30, l: 40, r: 10 },
-        height: 150,
-        xaxis: {
-            showgrid: false,
-            tickformat: '%H:%M',
-            tickangle: 0,
-            tickfont: { size: 12 }
-        },
-        yaxis: {
-            showgrid: true,
-            zeroline: false,
-            tickfont: { size: 12 },
-            title: config.unit,
-            titlefont: { size: 12 }
-        },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        hovermode: 'x unified',
-        hoverlabel: {
-            bgcolor: 'rgba(0,0,0,0.8)',
-            font: { size: 11 }
+
+    try {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn(`⚠️ Container not found: ${containerId}`);
+            return;
         }
-    };
-    
-    Plotly.react(container, data, layout, {
-        displayModeBar: false,
-        responsive: true
-    });
+
+        // Подготавливаем данные
+        const timestamps = values.map(v => v[0]);
+        const dataValues = values.map(v => v[1]);
+        
+        // Проверяем, есть ли валидные данные
+        const validValues = dataValues.filter(v => v !== null && v !== undefined && !isNaN(v));
+        if (validValues.length === 0) {
+            console.warn(`⚠️ No valid data for trend chart: ${containerId}`);
+            return;
+        }
+
+        // Вычисляем диапазон для лучшего масштабирования
+        const minValue = Math.min(...validValues);
+        const maxValue = Math.max(...validValues);
+        const range = maxValue - minValue;
+        
+        // Если все значения одинаковые, добавляем небольшой диапазон
+        let yMin = minValue;
+        let yMax = maxValue;
+        if (range === 0) {
+            yMin = minValue - Math.abs(minValue) * 0.1;
+            yMax = maxValue + Math.abs(maxValue) * 0.1;
+        } else {
+            // Добавляем 10% отступа для лучшей видимости
+            const padding = range * 0.1;
+            yMin = minValue - padding;
+            yMax = maxValue + padding;
+        }
+
+        // Форматируем временные метки
+        const timeLabels = timestamps.map(ts => {
+            const date = new Date(ts * 1000);
+            return date.toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        });
+
+        const trace = {
+            x: timeLabels,
+            y: dataValues,
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: config.color || '#3498db', width: 2 },
+            marker: { 
+                color: config.color || '#3498db', 
+                size: 4,
+                opacity: 0.7 
+            },
+            name: config.label || containerId
+        };
+
+        const layout = {
+            margin: { t: 20, b: 40, l: 50, r: 20 },
+            height: 250,
+            xaxis: { 
+                title: 'Время',
+                tickangle: -45,
+                tickmode: 'auto',
+                nticks: Math.min(10, timeLabels.length)
+            },
+            yaxis: { 
+                title: config.unit || 'Значение',
+                range: [yMin, yMax]
+            },
+            showlegend: false
+        };
+
+        Plotly.newPlot(containerId, [trace], layout);
+        console.log(`✅ Trend chart rendered for ${containerId}: ${validValues.length} points, range [${minValue.toFixed(3)}, ${maxValue.toFixed(3)}]`);
+
+    } catch (error) {
+        console.error(`❌ Failed to render trend chart for ${containerId}:`, error);
+    }
 }
 
 /**
  * Рендерит гистограмму (bar)
  */
 function renderBarChart(config, values, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container || !values || values.length === 0) {
+    if (!values || values.length === 0) {
+        console.warn(`⚠️ No data for bar chart: ${containerId}`);
         return;
     }
-    
-    // Приводим строки к числам и отбрасываем нечисловые значения
-    const dataValues = values
-        .map(([_, v]) => {
-            const parsed = typeof v === 'string' ? parseFloat(v) : v;
-            return isNaN(parsed) ? null : parsed;
-        })
-        .filter(v => v !== null && v !== undefined);
-    
-    if (dataValues.length === 0) {
-        return;
-    }
-    
-    const data = [{
-        x: dataValues,
-        type: 'histogram',
-        nbinsx: 10,
-        marker: {
-            color: config.color,
-            opacity: 0.7
-        },
-        hovertemplate: 'Количество: %{y}<br>Значение: %{x:.3f}<extra></extra>'
-    }];
-    
-    const layout = {
-        margin: { t: 10, b: 30, l: 40, r: 10 },
-        height: 150,
-        xaxis: {
-            showgrid: false,
-            tickfont: { size: 12 },
-            title: config.unit,
-            titlefont: { size: 12 }
-        },
-        yaxis: {
-            showgrid: true,
-            zeroline: false,
-            tickfont: { size: 12 },
-            title: 'Количество',
-            titlefont: { size: 12 }
-        },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        hovermode: 'closest',
-        hoverlabel: {
-            bgcolor: 'rgba(0,0,0,0.8)',
-            font: { size: 11 }
+
+    try {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn(`⚠️ Container not found: ${containerId}`);
+            return;
         }
-    };
-    
-    Plotly.react(container, data, layout, {
-        displayModeBar: false,
-        responsive: true
-    });
+
+        // Подготавливаем данные
+        const dataValues = values.map(v => v[1]).filter(v => v !== null && v !== undefined && !isNaN(v));
+        if (dataValues.length === 0) {
+            console.warn(`⚠️ No valid data for bar chart: ${containerId}`);
+            return;
+        }
+
+        // Вычисляем статистику для гистограммы
+        const minValue = Math.min(...dataValues);
+        const maxValue = Math.max(...dataValues);
+        const avgValue = dataValues.reduce((sum, val) => sum + val, 0) / dataValues.length;
+        
+        // Создаем гистограмму
+        const trace = {
+            x: dataValues,
+            type: 'histogram',
+            nbinsx: Math.min(20, Math.max(5, Math.sqrt(dataValues.length))),
+            marker: { 
+                color: config.color || '#3498db',
+                opacity: 0.7
+            },
+            name: config.label || containerId
+        };
+
+        const layout = {
+            margin: { t: 20, b: 40, l: 50, r: 20 },
+            height: 250,
+            xaxis: { 
+                title: config.unit || 'Значение',
+                range: [minValue * 0.9, maxValue * 1.1]
+            },
+            yaxis: { 
+                title: 'Количество',
+                rangemode: 'tozero'
+            },
+            showlegend: false
+        };
+
+        Plotly.newPlot(containerId, [trace], layout);
+        console.log(`✅ Bar chart rendered for ${containerId}: ${dataValues.length} points, avg=${avgValue.toFixed(3)}`);
+
+    } catch (error) {
+        console.error(`❌ Failed to render bar chart for ${containerId}:`, error);
+    }
 }
 
 /**

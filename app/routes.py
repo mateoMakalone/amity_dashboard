@@ -125,12 +125,20 @@ def sections_config():
     """
     Возвращает конфигурацию секций метрик
     """
-    return jsonify({
+    print(f"[DEBUG] /api/sections: запрос получен")
+    print(f"[DEBUG] /api/sections: SECTIONS = {len(SECTIONS)} секций")
+    print(f"[DEBUG] /api/sections: ALL_METRICS = {len(ALL_METRICS)} метрик")
+    print(f"[DEBUG] /api/sections: TIME_INTERVALS = {len(TIME_INTERVALS)} интервалов")
+    
+    response_data = {
         "status": "ok",
         "sections": SECTIONS,
         "all_metrics": ALL_METRICS,
         "time_intervals": TIME_INTERVALS
-    })
+    }
+    
+    print(f"[DEBUG] /api/sections: возвращаем ответ")
+    return jsonify(response_data)
 
 @dashboard_bp.route("/api/test")
 def test_endpoint():
@@ -140,6 +148,30 @@ def test_endpoint():
     return jsonify({
         "status": "ok",
         "message": "Test endpoint works"
+    })
+
+@dashboard_bp.route("/api/debug")
+def debug_endpoint():
+    """
+    Диагностический endpoint для проверки состояния системы
+    """
+    from .metrics import metrics_data, lock
+    
+    with lock:
+        metrics_count = len(metrics_data["metrics"])
+        history_count = len(metrics_data["history"])
+        last_updated = metrics_data["last_updated"]
+        last_error = metrics_data["last_error"]
+    
+    return jsonify({
+        "status": "ok",
+        "metrics_count": metrics_count,
+        "history_count": history_count,
+        "last_updated": last_updated,
+        "last_error": last_error,
+        "sections_config": len(SECTIONS),
+        "all_metrics_config": len(ALL_METRICS),
+        "kpi_metrics_config": len(KPI_METRICS_CONFIG)
     })
 
 # Удалён эндпоинт /sections (sections_simple)

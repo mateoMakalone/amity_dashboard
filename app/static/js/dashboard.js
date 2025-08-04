@@ -27,28 +27,36 @@ const formatFunctions = {
  * Инициализация дашборда
  */
 async function initDashboard() {
+    console.log('🚀 Starting dashboard initialization...');
     try {
         // Проверяем debug-режим из URL
         const urlParams = new URLSearchParams(window.location.search);
         debugMode = urlParams.get('debug') === 'true';
+        console.log('🔧 Debug mode:', debugMode);
         
         // Загружаем конфигурацию секций
+        console.log('📋 Loading sections configuration...');
         await loadSectionsConfig();
         
         // Инициализируем интерфейс
+        console.log('🎛️ Initializing controls...');
         initControls();
         
         // Загружаем данные
+        console.log('📊 Loading sections data...');
         await loadSectionsData();
         
         // Запускаем автообновление
+        console.log('⏰ Starting auto-update...');
         startAutoUpdate();
         
         // Скрываем индикатор загрузки
+        console.log('✅ Dashboard initialization completed');
         hideLoading();
         
     } catch (error) {
-        console.error('Dashboard initialization failed:', error);
+        console.error('❌ Dashboard initialization failed:', error);
+        console.error('Error stack:', error.stack);
         showError('Ошибка инициализации дашборда: ' + error.message);
         hideLoading();
     }
@@ -58,13 +66,26 @@ async function initDashboard() {
  * Загружает конфигурацию секций и метрик
  */
 async function loadSectionsConfig() {
+    console.log('🔍 Fetching /api/sections...');
     try {
         const response = await fetch('/api/sections');
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response headers:', response.headers);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('📋 Received sections config:', data);
         
         sectionsConfig = data.sections || {};
         allMetrics = data.all_metrics || {};
         timeIntervals = data.time_intervals || [];
+        
+        console.log('📊 Sections config loaded:', Object.keys(sectionsConfig));
+        console.log('📈 All metrics count:', Object.keys(allMetrics).length);
+        console.log('⏰ Time intervals:', timeIntervals);
         
         // Динамически заполняем селектор интервалов
         const intervalSelect = document.getElementById('time-interval');
@@ -77,11 +98,17 @@ async function loadSectionsConfig() {
                 intervalSelect.appendChild(option);
             });
             intervalSelect.value = currentInterval;
+            console.log('⏰ Time interval selector updated');
         }
         
     } catch (error) {
-        console.error('Failed to load sections config:', error);
-        throw new Error('Не удалось загрузить конфигурацию секций');
+        console.error('❌ Failed to load sections config:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            url: '/api/sections'
+        });
+        throw new Error('Не удалось загрузить конфигурацию секций: ' + error.message);
     }
 }
 
@@ -142,31 +169,41 @@ function toggleDebugMode() {
  * Загружает данные для всех секций
  */
 async function loadSectionsData() {
+    console.log('📊 Starting to load sections data...');
+    console.log('📋 Available sections:', Object.keys(sectionsConfig));
+    
     try {
-
- const container = document.getElementById('sections-container');
-const isFirst = firstLoad && container && !container.hasChildNodes();
-    if (isFirst) {
-    showLoading();
-    updateStatus('loading');
-    renderSections();
-} 
+        const container = document.getElementById('sections-container');
+        const isFirst = firstLoad && container && !container.hasChildNodes();
+        console.log('🔄 First load:', firstLoad, 'Container empty:', !container.hasChildNodes());
+        
+        if (isFirst) {
+            console.log('🔄 First load detected, showing loading indicator...');
+            showLoading();
+            updateStatus('loading');
+            renderSections();
+        } 
         
         // Загружаем данные для каждой секции
+        console.log('📥 Loading data for sections:', Object.keys(sectionsConfig));
         const sectionPromises = Object.keys(sectionsConfig).map(async (sectionName) => {
+            console.log(`📥 Loading data for section: ${sectionName}`);
             await loadSectionData(sectionName);
         });
         
         await Promise.all(sectionPromises);
+        console.log('✅ All sections data loaded successfully');
         
         updateStatus('ok');
         
     } catch (error) {
-        console.error('Failed to load sections data:', error);
+        console.error('❌ Failed to load sections data:', error);
+        console.error('Error stack:', error.stack);
         showError('Ошибка загрузки данных: ' + error.message);
         updateStatus('error');
     } finally {
-      if (firstLoad) {
+        if (firstLoad) {
+            console.log('🔄 First load completed, hiding loading indicator');
             hideLoading();
             firstLoad = false;
         }
@@ -177,9 +214,14 @@ const isFirst = firstLoad && container && !container.hasChildNodes();
  * Рендерит секции на странице
  */
 function renderSections() {
+    console.log('🎨 Rendering sections...');
     const container = document.getElementById('sections-container');
-    if (!container) return;
+    if (!container) {
+        console.error('❌ Sections container not found');
+        return;
+    }
     
+    console.log('📋 Available sections:', Object.keys(sectionsConfig));
     container.innerHTML = '';
     
     // Сортируем секции: KPI всегда первая
@@ -189,10 +231,16 @@ function renderSections() {
         if (b === 'KPI') return 1;
         return 0;
     });
+    
+    console.log('📊 Sorted section names:', sectionNames);
+    
     sectionNames.forEach(sectionName => {
+        console.log(`🎨 Creating section: ${sectionName}`);
         const section = createSection(sectionName);
         container.appendChild(section);
     });
+    
+    console.log('✅ Sections rendering completed');
 }
 
 /**
@@ -250,11 +298,18 @@ function toggleSection(sectionName) {
  * Загружает данные для конкретной секции
  */
 async function loadSectionData(sectionName) {
+    console.log(`📥 Loading data for section: ${sectionName}`);
     try {
         const sectionMetrics = sectionsConfig[sectionName] || [];
-        const content = document.getElementById(`section-content-${sectionName}`);
+        console.log(`📊 Section ${sectionName} has ${sectionMetrics.length} metrics:`, sectionMetrics);
         
-        if (!content) return;
+        const content = document.getElementById(`section-content-${sectionName}`);
+        console.log(`🎯 Section content element:`, content ? 'found' : 'not found');
+        
+        if (!content) {
+            console.warn(`⚠️ Content element for section ${sectionName} not found`);
+            return;
+        }
         
         // Удаляем индикатор загрузки в секции
         const loadingIndicator = content.querySelector('.loading-indicator');
@@ -264,6 +319,7 @@ async function loadSectionData(sectionName) {
         
         // Если в секции нет метрик — показываем stub и выходим
         if (sectionMetrics.length === 0) {
+            console.log(`📭 Section ${sectionName} has no metrics`);
             // Если ещё нет содержимого, создаём сообщение
             if (!content.hasChildNodes()) {
                 content.innerHTML = '<div class="no-data">Нет метрик в этой секции</div>';
@@ -272,21 +328,26 @@ async function loadSectionData(sectionName) {
         }
         
         // Загружаем данные для каждой метрики
+        console.log(`🔄 Loading ${sectionMetrics.length} metrics for section ${sectionName}`);
         const metricPromises = sectionMetrics.map(async (metricId) => {
             try {
+                console.log(`📊 Loading metric: ${metricId}`);
                 const metricData = await loadMetricData(metricId);
+                console.log(`✅ Metric ${metricId} loaded successfully`);
                 return { id: metricId, data: metricData };
             } catch (error) {
-                console.error(`Failed to load metric ${metricId}:`, error);
+                console.error(`❌ Failed to load metric ${metricId}:`, error);
                 return { id: metricId, data: null, error: error.message };
             }
         });
         
         const results = await Promise.all(metricPromises);
+        console.log(`📊 Section ${sectionName} results:`, results.length, 'metrics processed');
 
         results.forEach(result => {
             const existingCard = document.getElementById(`metric-${result.id}`);
             if (existingCard) {
+                console.log(`🔄 Updating existing card for metric: ${result.id}`);
                 // Если карточка уже существует, обновляем её
                 if (result.data) {
                     updateMetricCard(result.id, result.data);
@@ -294,6 +355,7 @@ async function loadSectionData(sectionName) {
                     existingCard.innerHTML = `<div class="metric-header"><h4 class="metric-title">${result.id}</h4></div><div class="metric-error">Ошибка: ${result.error}</div>`;
                 }
             } else {
+                console.log(`🆕 Creating new card for metric: ${result.id}`);
                 // Если карточки нет, создаём новую и добавляем
                 const metricCard = createMetricCard(result.id, result.data, result.error);
                 content.appendChild(metricCard);
@@ -315,8 +377,11 @@ async function loadSectionData(sectionName) {
             }
         });
         
+        console.log(`✅ Section ${sectionName} data loading completed`);
+        
     } catch (error) {
-        console.error(`Failed to load section ${sectionName}:`, error);
+        console.error(`❌ Failed to load section ${sectionName}:`, error);
+        console.error('Error stack:', error.stack);
         const content = document.getElementById(`section-content-${sectionName}`);
         if (content) {
             content.innerHTML = `<div class="metric-error">Ошибка загрузки секции: ${error.message}</div>`;
@@ -328,29 +393,44 @@ async function loadSectionData(sectionName) {
  * Загружает данные для конкретной метрики
  */
 async function loadMetricData(metricId) {
+    console.log(`📊 Loading metric data for: ${metricId}`);
+    
     if (!allMetrics[metricId]) {
+        console.error(`❌ Metric ${metricId} not found in configuration`);
         throw new Error(`Метрика '${metricId}' не найдена в конфигурации`);
     }
     
     const metricConfig = allMetrics[metricId];
+    console.log(`📋 Metric config for ${metricId}:`, metricConfig);
     
     // Загружаем историю метрики
     const params = new URLSearchParams({
         interval: currentInterval.toString()
     });
     
-    const response = await fetch(`/api/metrics/${metricId}/history?${params}`);
-    const data = await response.json();
+    const url = `/api/metrics/${metricId}/history?${params}`;
+    console.log(`🔗 Fetching metric data from: ${url}`);
     
-    if (data.status === 'error') {
-        throw new Error(data.error || 'Unknown error');
+    try {
+        const response = await fetch(url);
+        console.log(`📡 Response status for ${metricId}:`, response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`📊 Received data for ${metricId}:`, data);
+        
+        return {
+            config: metricConfig,
+            history: data.data || data
+        };
+        
+    } catch (error) {
+        console.error(`❌ Failed to load metric ${metricId}:`, error);
+        throw error;
     }
-    
-    return {
-        config: metricConfig,
-        history: data.data || {},
-        debug: debugMode ? data : null
-    };
 }
 
 /**

@@ -231,6 +231,16 @@ class MetricsService:
         with lock:
             current_metrics = dict(metrics_data["metrics"])
             error = metrics_data["last_error"]
+            last_updated = metrics_data["last_updated"]
+        
+        print(f"[DEBUG] get_metrics_data: получено {len(current_metrics)} метрик")
+        print(f"[DEBUG] get_metrics_data: последнее обновление: {last_updated}")
+        print(f"[DEBUG] get_metrics_data: ошибка: {error}")
+        
+        if len(current_metrics) == 0:
+            print(f"[WARNING] get_metrics_data: нет метрик в кэше")
+            return {"metrics": {}, "prominent": {}, "error": error or "No metrics available"}
+        
         # Вычисляем среднее время ответа (get/post)
         get_count = current_metrics.get('jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}', 0.0)
         post_count = current_metrics.get('jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}', 0.0)
@@ -247,24 +257,41 @@ class MetricsService:
 
         # Составляем KPI-метрики на основе конфигурации
         prominent = {}
+        print(f"[DEBUG] get_metrics_data: обрабатываем {len(KPI_METRICS_CONFIG)} KPI метрик")
+        
         for config in KPI_METRICS_CONFIG:
             name = config["id"]
             norm_name = MetricKeyHelper.normalize(name)
             if norm_name in current_metrics:
                 value = current_metrics[norm_name]
+                print(f"[DEBUG] get_metrics_data: {name} (norm: {norm_name}) = {value}")
             elif "formula" in config:
                 value = eval_formula(config["formula"], current_metrics)
+                print(f"[DEBUG] get_metrics_data: {name} (formula) = {value}")
             else:
                 value = get_metric(current_metrics, norm_name)
+                print(f"[DEBUG] get_metrics_data: {name} (get_metric) = {value}")
             if value is None:
                 value = 0.0
+                print(f"[DEBUG] get_metrics_data: {name} = 0.0 (default)")
             prominent[name] = value
+        
+        print(f"[DEBUG] get_metrics_data: возвращаем {len(prominent)} prominent метрик")
         return {"metrics": current_metrics, "prominent": prominent, "error": error}
 
     @staticmethod
     def get_metrics_history():
         with lock:
-            return {name: list(history) for name, history in metrics_data["history"].items()}
+            history = {name: list(history) for name, history in metrics_data["history"].items()}
+        
+        print(f"[DEBUG] get_metrics_history: возвращаем историю для {len(history)} метрик")
+        for metric_name, history_data in history.items():
+            if history_data:
+                print(f"[DEBUG] get_metrics_history: {metric_name}: {len(history_data)} точек")
+            else:
+                print(f"[DEBUG] get_metrics_history: {metric_name}: пустая история")
+        
+        return history
         
     @classmethod
     def get_all_metrics(cls):
@@ -291,15 +318,52 @@ class MetricsService:
 
 def update_metrics():
     print("[DEBUG] update_metrics: поток сбора метрик стартовал")
+    print(f"[DEBUG] update_metrics: METRICS_URL = {METRICS_URL}")
+    print(f"[DEBUG] update_metrics: REQUEST_TIMEOUT = {REQUEST_TIMEOUT}")
+    print(f"[DEBUG] update_metrics: UPDATE_INTERVAL = {UPDATE_INTERVAL}")
     
     while True:
         try:
             start_time = time.time()
             print(f"[DEBUG] update_metrics: запрос к {METRICS_URL}")
-            response = requests.get(METRICS_URL, timeout=REQUEST_TIMEOUT)
-            print(f"[DEBUG] update_metrics: получен ответ, длина={len(response.text)}")
+            
+            # Проверяем доступность сервера перед запросом
+            try:
+                response = requests.get(METRICS_URL, timeout=REQUEST_TIMEOUT)
+                print(f"[DEBUG] update_metrics: получен ответ, статус={response.status_code}, длина={len(response.text)}")
+                
+                if response.status_code != 200:
+                    print(f"[WARNING] update_metrics: неожиданный статус ответа: {response.status_code}")
+                    print(f"[WARNING] update_metrics: текст ответа: {response.text[:200]}...")
+                    
+            except requests.exceptions.ConnectionError as e:
+                print(f"[ERROR] update_metrics: ошибка подключения к {METRICS_URL}: {e}")
+                with lock:
+                    metrics_data["last_error"] = f"Connection error: {e}"
+                time.sleep(UPDATE_INTERVAL)
+                continue
+                
+            except requests.exceptions.Timeout as e:
+                print(f"[ERROR] update_metrics: таймаут при запросе к {METRICS_URL}: {e}")
+                with lock:
+                    metrics_data["last_error"] = f"Timeout error: {e}"
+                time.sleep(UPDATE_INTERVAL)
+                continue
+                
+            except Exception as e:
+                print(f"[ERROR] update_metrics: неожиданная ошибка при запросе: {e}")
+                with lock:
+                    metrics_data["last_error"] = f"Request error: {e}"
+                time.sleep(UPDATE_INTERVAL)
+                continue
+            
             parsed = parse_metrics(response.text)
             print(f"[DEBUG] update_metrics: распарсено {len(parsed)} метрик")
+            
+            if len(parsed) == 0:
+                print(f"[WARNING] update_metrics: не получено ни одной метрики")
+                print(f"[DEBUG] update_metrics: первые 500 символов ответа: {response.text[:500]}")
+            
             now = time.time()
             with lock:
                 for name, value in parsed.items():
@@ -327,15 +391,15 @@ def update_metrics():
                 # === END TEST LOGS ===
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
-                print(f"[DEBUG] update_metrics: metrics_data['metrics'] keys: {list(metrics_data['metrics'].keys())}")
                 
-            # Сохраняем кэш после каждого обновления метрик
+            # Сохраняем кэш
             save_cache_to_file()
             
         except Exception as e:
             with lock:
                 metrics_data["last_error"] = str(e)
                 print(f"[ERROR] Metrics update failed: {e}")
+                print(f"[ERROR] Error stack: {e.__class__.__name__}: {e}")
         time.sleep(max(0, UPDATE_INTERVAL - (time.time() - start_time)))
 
 def get_all_metric_names():

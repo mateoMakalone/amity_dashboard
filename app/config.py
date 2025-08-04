@@ -2,7 +2,8 @@ import os
 
 # Удалён DEBUG_MODE и print
 
-METRICS_URL = "http://server:5110/metrics"
+# URL метрик - можно переопределить через переменную окружения
+METRICS_URL = os.getenv("METRICS_URL", "http://server:5110/metrics")
 UPDATE_INTERVAL = 1.0
 REQUEST_TIMEOUT = 3.0
 HISTORY_LENGTH = 60

@@ -1,12 +1,34 @@
 
 import json, os, time
 from collections import deque
+import requests
+import threading
+from app.config import METRICS_CONFIG
+from app.parser import eval_formula
+from app.utils_metric_key import MetricKeyHelper
 
 # Определяем путь кэша в зависимости от ОС
 if os.name == 'nt':  # Windows
     CACHE_FILE = os.path.join(os.getcwd(), 'metrics_cache.json')
 else:  # Unix/Linux
     CACHE_FILE = '/tmp/metrics_cache.json'
+
+# Флаг для тестового режима
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+TEST_DATA_FILE = "govno_error.txt"
+
+# Глобальные переменные для потокобезопасности
+lock = threading.Lock()
+metrics_data = {
+    "metrics": {},
+    "history": {},
+    "last_updated": 0,
+    "last_error": None
+}
+
+# Флаг для остановки потока метрик
+stop_metrics_thread = False
+metrics_thread = None
 
 # Оптимизированные настройки кэша
 SAVE_INTERVAL = 60  # Сохраняем каждую минуту
@@ -405,7 +427,9 @@ def update_metrics():
     print(f"[DEBUG] update_metrics: REQUEST_TIMEOUT = {REQUEST_TIMEOUT}")
     print(f"[DEBUG] update_metrics: UPDATE_INTERVAL = {UPDATE_INTERVAL}")
     
-    while True:
+    global stop_metrics_thread
+    
+    while not stop_metrics_thread:
         try:
             start_time = time.time()
             print(f"[DEBUG] update_metrics: запрос к {METRICS_URL}")
@@ -449,29 +473,66 @@ def update_metrics():
             
             now = time.time()
             with lock:
+                # Сохраняем все полученные метрики
                 for name, value in parsed.items():
-                    # Сохраняем все метрики
                     metrics_data["metrics"][name] = value
-                # === NEW: обновляем историю только по ключам из KPI_METRICS_CONFIG и SECTIONS ===
-                all_metric_names = set(config["id"] for config in KPI_METRICS_CONFIG)
-                for category_name, metrics_list in SECTIONS.items():
-                    for pattern in metrics_list:
-                        all_metric_names.add(pattern)
-                for metric_name in all_metric_names:
-                    norm_name = MetricKeyHelper.normalize(metric_name)
-                    value = find_metric_value(metrics_data["metrics"], norm_name)
-                    if value is None:
-                        value = 0.0
-                    metrics_data["history"][norm_name].append((now, value))
-                # === END NEW ===
+                
+                # Обновляем историю для всех метрик из конфигурации
+                for metric_id, config in METRICS_CONFIG.items():
+                    try:
+                        # Получаем значение метрики
+                        promql = config.get("promql", metric_id)
+                        value = None
+                        
+                        # Если это простая метрика без PromQL формул
+                        if not any(op in promql for op in ['rate(', 'avg(', 'sum(', '/', '*', '-', '+']):
+                            # Ищем точное совпадение
+                            value = find_metric_value(metrics_data["metrics"], promql)
+                            
+                            # Если не найдено, пробуем без лейблов
+                            if value is None and '{' in promql:
+                                base_name = promql.split('{')[0]
+                                value = find_metric_value(metrics_data["metrics"], base_name)
+                        else:
+                            # Для сложных PromQL формул вычисляем значение
+                            try:
+                                value = eval_formula(promql, metrics_data["metrics"])
+                            except Exception as e:
+                                print(f"[WARNING] Failed to evaluate formula for {metric_id}: {e}")
+                                value = 0.0
+                        
+                        # Если значение не найдено, устанавливаем 0
+                        if value is None:
+                            value = 0.0
+                            
+                        # Добавляем в историю
+                        norm_name = MetricKeyHelper.normalize(metric_id)
+                        if norm_name not in metrics_data["history"]:
+                            metrics_data["history"][norm_name] = deque(maxlen=MAX_HISTORY_POINTS)
+                        metrics_data["history"][norm_name].append((now, value))
+                        
+                        # Логируем для отладки
+                        if metric_id in ["avg_response_time_api", "gc_pause_time", "get_response_time", "jvm_memory_used", "post_response_time", "system_load", "tx_pool_size"]:
+                            print(f"[DEBUG] {metric_id}: value={value}, promql={promql}")
+                            
+                    except Exception as e:
+                        print(f"[ERROR] Failed to update history for {metric_id}: {e}")
+                        # Добавляем 0 в историю для этой метрики
+                        norm_name = MetricKeyHelper.normalize(metric_id)
+                        if norm_name not in metrics_data["history"]:
+                            metrics_data["history"][norm_name] = deque(maxlen=MAX_HISTORY_POINTS)
+                        metrics_data["history"][norm_name].append((now, 0.0))
+                
                 # === TEST LOGS: выводим состояние истории для диагностики ===
-                for test_metric in ["jetty_server_requests_seconds_avg", "postgres_connections"]:
-                    hist = metrics_data["history"].get(test_metric)
+                for test_metric in ["avg_response_time_api", "gc_pause_time", "get_response_time", "jvm_memory_used", "post_response_time", "system_load", "tx_pool_size"]:
+                    norm_name = MetricKeyHelper.normalize(test_metric)
+                    hist = metrics_data["history"].get(norm_name)
                     if hist:
                         print(f"[TEST] {test_metric}: history_len={len(hist)}, last={hist[-1]}")
                     else:
                         print(f"[TEST] {test_metric}: NO HISTORY")
                 # === END TEST LOGS ===
+                
                 metrics_data["last_updated"] = now
                 metrics_data["last_error"] = None
                 
@@ -483,19 +544,20 @@ def update_metrics():
                 metrics_data["last_error"] = str(e)
                 print(f"[ERROR] Metrics update failed: {e}")
                 print(f"[ERROR] Error stack: {e.__class__.__name__}: {e}")
+        
+        # Проверяем флаг остановки перед сном
+        if stop_metrics_thread:
+            break
+            
         time.sleep(max(0, UPDATE_INTERVAL - (time.time() - start_time)))
+    
+    print("[DEBUG] update_metrics: поток сбора метрик завершен")
 
 def get_all_metric_names():
     """
-    Возвращает все имена метрик из конфигурации
+    Возвращает все имена метрик из конфигурации METRICS_CONFIG
     """
-    names = set(config["id"] for config in KPI_METRICS_CONFIG)
-    for category_name, metrics_list in SECTIONS.items():
-        for pattern in metrics_list:
-            # Если pattern не содержит спецсимволов, добавляем как есть
-            if not any(c in pattern for c in ".*?[]{}()^$|+\\"):
-                names.add(pattern)
-    return names
+    return set(METRICS_CONFIG.keys())
 
 def cleanup_old_cache_files():
     """
@@ -566,7 +628,54 @@ def validate_cache_data(data):
 
 def start_metrics_thread():
     """
-    Запускает поток обновления метрик
+    Запускает поток сбора метрик
+    """
+    global metrics_thread, stop_metrics_thread
+    
+    # Останавливаем предыдущий поток, если он запущен
+    if metrics_thread and metrics_thread.is_alive():
+        print("[DEBUG] Останавливаем предыдущий поток метрик...")
+        stop_metrics_thread = True
+        metrics_thread.join(timeout=5)
+        if metrics_thread.is_alive():
+            print("[WARNING] Не удалось корректно остановить предыдущий поток")
+    
+    # Сбрасываем флаг остановки
+    stop_metrics_thread = False
+    
+    # Выбираем функцию в зависимости от режима
+    if TEST_MODE:
+        print("[DEBUG] Запускаем тестовый режим сбора метрик")
+        target_function = update_metrics_test_mode
+    else:
+        print("[DEBUG] Запускаем обычный режим сбора метрик")
+        target_function = update_metrics
+    
+    # Создаем новый поток
+    metrics_thread = threading.Thread(target=target_function, daemon=True)
+    metrics_thread.start()
+    print("[DEBUG] Поток сбора метрик запущен")
+
+def stop_metrics_thread():
+    """
+    Останавливает поток сбора метрик
+    """
+    global stop_metrics_thread, metrics_thread
+    
+    if metrics_thread and metrics_thread.is_alive():
+        print("[DEBUG] Останавливаем поток сбора метрик...")
+        stop_metrics_thread = True
+        metrics_thread.join(timeout=5)
+        if metrics_thread.is_alive():
+            print("[WARNING] Не удалось корректно остановить поток метрик")
+        else:
+            print("[DEBUG] Поток сбора метрик остановлен")
+    else:
+        print("[DEBUG] Поток сбора метрик не был запущен")
+
+def initialize_metrics():
+    """
+    Инициализирует систему метрик
     """
     # Очищаем старые поврежденные файлы кэша
     cleanup_old_cache_files()
@@ -577,6 +686,127 @@ def start_metrics_thread():
     # Загружаем кэш из файла
     load_cache_from_file()
     
-    # Запускаем поток обновления метрик
-    thread = threading.Thread(target=update_metrics, daemon=True)
-    thread.start()
+    # Запускаем поток сбора метрик
+    start_metrics_thread()
+
+def load_test_data():
+    """
+    Загружает тестовые данные из govno_error.txt
+    """
+    try:
+        if not os.path.exists(TEST_DATA_FILE):
+            print(f"[WARNING] Тестовый файл {TEST_DATA_FILE} не найден")
+            return None
+        
+        with open(TEST_DATA_FILE, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+        
+        if not content:
+            print(f"[WARNING] Тестовый файл {TEST_DATA_FILE} пуст")
+            return None
+        
+        data = json.loads(content)
+        print(f"[DEBUG] Загружены тестовые данные: {len(data.get('metrics', {}))} метрик")
+        return data
+        
+    except Exception as e:
+        print(f"[ERROR] Ошибка загрузки тестовых данных: {e}")
+        return None
+
+def update_metrics_test_mode():
+    """
+    Обновляет метрики в тестовом режиме, используя данные из govno_error.txt
+    """
+    print("[DEBUG] update_metrics_test_mode: тестовый режим сбора метрик")
+    
+    global stop_metrics_thread
+    
+    # Загружаем тестовые данные
+    test_data = load_test_data()
+    if not test_data:
+        print("[ERROR] Не удалось загрузить тестовые данные")
+        return
+    
+    while not stop_metrics_thread:
+        try:
+            start_time = time.time()
+            now = time.time()
+            
+            with lock:
+                # Используем тестовые метрики
+                metrics_data["metrics"] = test_data.get("metrics", {}).copy()
+                
+                # Обновляем историю для всех метрик из конфигурации
+                for metric_id, config in METRICS_CONFIG.items():
+                    try:
+                        # Получаем значение метрики
+                        promql = config.get("promql", metric_id)
+                        value = None
+                        
+                        # Если это простая метрика без PromQL формул
+                        if not any(op in promql for op in ['rate(', 'avg(', 'sum(', '/', '*', '-', '+']):
+                            # Ищем точное совпадение
+                            value = find_metric_value(metrics_data["metrics"], promql)
+                            
+                            # Если не найдено, пробуем без лейблов
+                            if value is None and '{' in promql:
+                                base_name = promql.split('{')[0]
+                                value = find_metric_value(metrics_data["metrics"], base_name)
+                        else:
+                            # Для сложных PromQL формул вычисляем значение
+                            try:
+                                value = eval_formula(promql, metrics_data["metrics"])
+                            except Exception as e:
+                                print(f"[WARNING] Failed to evaluate formula for {metric_id}: {e}")
+                                value = 0.0
+                        
+                        # Если значение не найдено, устанавливаем 0
+                        if value is None:
+                            value = 0.0
+                            
+                        # Добавляем в историю
+                        norm_name = MetricKeyHelper.normalize(metric_id)
+                        if norm_name not in metrics_data["history"]:
+                            metrics_data["history"][norm_name] = deque(maxlen=MAX_HISTORY_POINTS)
+                        metrics_data["history"][norm_name].append((now, value))
+                        
+                        # Логируем для отладки
+                        if metric_id in ["avg_response_time_api", "gc_pause_time", "get_response_time", "jvm_memory_used", "post_response_time", "system_load", "tx_pool_size"]:
+                            print(f"[DEBUG] {metric_id}: value={value}, promql={promql}")
+                            
+                    except Exception as e:
+                        print(f"[ERROR] Failed to update history for {metric_id}: {e}")
+                        # Добавляем 0 в историю для этой метрики
+                        norm_name = MetricKeyHelper.normalize(metric_id)
+                        if norm_name not in metrics_data["history"]:
+                            metrics_data["history"][norm_name] = deque(maxlen=MAX_HISTORY_POINTS)
+                        metrics_data["history"][norm_name].append((now, 0.0))
+                
+                # === TEST LOGS: выводим состояние истории для диагностики ===
+                for test_metric in ["avg_response_time_api", "gc_pause_time", "get_response_time", "jvm_memory_used", "post_response_time", "system_load", "tx_pool_size"]:
+                    norm_name = MetricKeyHelper.normalize(test_metric)
+                    hist = metrics_data["history"].get(norm_name)
+                    if hist:
+                        print(f"[TEST] {test_metric}: history_len={len(hist)}, last={hist[-1]}")
+                    else:
+                        print(f"[TEST] {test_metric}: NO HISTORY")
+                # === END TEST LOGS ===
+                
+                metrics_data["last_updated"] = now
+                metrics_data["last_error"] = None
+                
+            # Сохраняем кэш
+            save_cache_to_file()
+            
+        except Exception as e:
+            with lock:
+                metrics_data["last_error"] = str(e)
+                print(f"[ERROR] Test metrics update failed: {e}")
+        
+        # Проверяем флаг остановки перед сном
+        if stop_metrics_thread:
+            break
+            
+        time.sleep(max(0, UPDATE_INTERVAL - (time.time() - start_time)))
+    
+    print("[DEBUG] update_metrics_test_mode: тестовый поток сбора метрик завершен")

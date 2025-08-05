@@ -9,6 +9,32 @@ def normalize_metric_name(name, labels):
     label_str = ','.join(f'{k}="{v}"' for k, v in sorted_labels)
     return f'{name}{{{label_str}}}'
 
+def find_metric_value(metrics, metric_name):
+    """
+    Ищет значение метрики в словаре метрик
+    Поддерживает поиск по точному имени и по базовому имени без лейблов
+    """
+    # Прямой поиск
+    if metric_name in metrics:
+        return metrics[metric_name]
+    
+    # Поиск по базовому имени (без лейблов)
+    base_name = metric_name.split('{')[0]
+    if base_name in metrics:
+        return metrics[base_name]
+    
+    # Поиск метрик с лейблами, начинающихся с базового имени
+    for key, value in metrics.items():
+        if key.startswith(base_name + '{'):
+            return value
+    
+    # Поиск по базовому имени в ключах с лейблами
+    for key, value in metrics.items():
+        if '{' in key and key.split('{')[0] == base_name:
+            return value
+    
+    return None
+
 def parse_metrics(text):
     metrics = {}
     current_metric = None
@@ -100,7 +126,7 @@ def get_metric(metrics, name):
 
 def eval_formula(formula, metrics):
     """
-    Безопасно вычисляет формулу для KPI-метрик, поддерживает sum(...) с лейблами
+    Безопасно вычисляет формулу для KPI-метрик, поддерживает sum(...), rate(...), avg(...) с лейблами
     """
     def sum_expr(name):
         # Извлекаем базовое имя и лейблы из строки вида "metric_name{label1=\"value1\",label2=\"value2\"}"
@@ -138,9 +164,117 @@ def eval_formula(formula, metrics):
             # Простая сумма без лейблов
             return sum(val for key, val in metrics.items() if key.startswith(name + '{'))
     
+    def rate_expr(name):
+        # Для rate() просто возвращаем текущее значение (упрощенная реализация)
+        # В реальности rate() требует историю значений
+        return sum_expr(name)
+    
+    def avg_expr(name):
+        # Для avg() возвращаем среднее значение
+        values = []
+        if '{' in name:
+            base_name = name.split('{')[0]
+            label_str = name[name.find('{')+1:name.find('}')]
+            labels = {}
+            for pair in label_str.split(','):
+                if '=' in pair:
+                    key, value = pair.split('=', 1)
+                    labels[key.strip()] = value.strip().strip('"')
+            
+            for key, val in metrics.items():
+                if not key.startswith(base_name + '{'):
+                    continue
+                if '{' in key:
+                    key_label_str = key[key.find('{')+1:key.find('}')]
+                    key_labels = {}
+                    for pair in key_label_str.split(','):
+                        if '=' in pair:
+                            k, v = pair.split('=', 1)
+                            key_labels[k.strip()] = v.strip().strip('"')
+                    
+                    if all(key_labels.get(lk) == lv for lk, lv in labels.items()):
+                        values.append(val)
+        else:
+            values = [val for key, val in metrics.items() if key.startswith(name + '{')]
+        
+        return sum(values) / len(values) if values else 0.0
+    
     try:
+        # Если формула - это просто имя метрики без функций, используем find_metric_value
+        if not any(func in formula for func in ["sum(", "rate(", "avg(", "+", "-", "*", "/", "("]):
+            return find_metric_value(metrics, formula) or 0.0
+        
+        # Обрабатываем сложные формулы с лейблами
+        # Пример: jvm_memory_used_bytes{area="heap",id="Tenured Gen"} / 1024 / 1024
+        if "{" in formula and "}" in formula:
+            # Извлекаем метрику с лейблами
+            metric_part = formula.split("}")[0] + "}"
+            operation_part = formula.split("}")[1].strip()
+            
+            # Находим значение метрики
+            metric_value = find_metric_value(metrics, metric_part)
+            if metric_value is None:
+                return 0.0
+            
+            # Применяем операции
+            if operation_part:
+                try:
+                    # Создаем безопасный контекст для операций
+                    safe_dict = {"__builtins__": {}, "metric_value": metric_value}
+                    result = eval(f"metric_value{operation_part}", safe_dict)
+                    return result if isinstance(result, (int, float)) else 0.0
+                except:
+                    return 0.0
+            else:
+                return metric_value
+        
+        # Обрабатываем формулы с функциями rate() и avg()
+        if "rate(" in formula or "avg(" in formula:
+            # Упрощенная обработка - извлекаем метрику из функции
+            if "rate(" in formula:
+                # rate(metric_name{labels}[1m]) -> metric_name{labels}
+                start = formula.find("rate(") + 5
+                end = formula.find("[1m]")
+                if end == -1:
+                    end = formula.find(")")
+                metric_name = formula[start:end]
+                return find_metric_value(metrics, metric_name) or 0.0
+            
+            elif "avg(" in formula:
+                # avg(rate(...)) -> извлекаем внутреннюю метрику
+                if "rate(" in formula:
+                    start = formula.find("rate(") + 5
+                    end = formula.find("[1m]")
+                    if end == -1:
+                        end = formula.find(")")
+                    metric_name = formula[start:end]
+                    return find_metric_value(metrics, metric_name) or 0.0
+                else:
+                    # avg(metric_name) -> metric_name
+                    start = formula.find("avg(") + 4
+                    end = formula.find(")")
+                    metric_name = formula[start:end]
+                    return find_metric_value(metrics, metric_name) or 0.0
+        
+        # Заменяем функции на наши реализации для остальных случаев
         modified_formula = formula.replace("sum(", "sum_expr(")
-        result = eval(modified_formula, {"sum_expr": sum_expr})
+        modified_formula = modified_formula.replace("rate(", "rate_expr(")
+        modified_formula = modified_formula.replace("avg(", "avg_expr(")
+        
+        # Создаем безопасный контекст для eval
+        safe_dict = {
+            "sum_expr": sum_expr,
+            "rate_expr": rate_expr,
+            "avg_expr": avg_expr,
+            "__builtins__": {}
+        }
+        
+        # Добавляем все метрики в контекст
+        for key, value in metrics.items():
+            safe_dict[key] = value
+        
+        result = eval(modified_formula, safe_dict)
+        
         if isinstance(result, float) and (result == float('inf') or result != result):
             return 0.0
         return result

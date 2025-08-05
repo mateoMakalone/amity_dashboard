@@ -18,142 +18,98 @@ TIME_INTERVALS = [
     {"value": 60, "label": "1 час"}
 ]
 
-# Секции метрик (группировка по категориям)
-SECTIONS = {
-    "KPI": [
-        "avg_response_time_api",
-        "system_cpu_usage", 
-        "jvm_memory_used",
-        "postgres_connections",
-        "postgres_locks",
-        "gc_pause_time",
-        "system_load",
-        "tx_pool_size"
-    ],
-    "Transactions": [
-        "postgres_transactions_total",
-        "postgres_rows_inserted_total",
-        "postgres_rows_updated_total",
-        "postgres_rows_deleted_total"
-    ],
-    "PostgreSQL": [
-        "postgres_connections",
-        "postgres_locks",
-        "postgres_blocks_reads_total",
-        "postgres_dead_rows"
-    ],
-    "JVM": [
-        "jvm_threads_live_threads",
-        "jvm_classes_loaded_classes"
-    ],
-    "Jetty": [
-        "jetty_server_requests_seconds_avg",
-        "jetty_get_avg_time",
-        "jetty_post_avg_time",
-        "jetty_connections_current_connections",
-        "jetty_connections_bytes_in_bytes_sum",
-        "jetty_connections_bytes_out_bytes_sum"
-    ],
-    "System": [
-        "system_cpu_usage",
-        "system_load",
-        "system_cpu_count"
-    ]
-}
+# ============================================================================
+# ЦЕНТРАЛИЗОВАННАЯ КОНФИГУРАЦИЯ МЕТРИК
+# ============================================================================
+# Теперь все метрики определяются в одном месте с указанием секции
+# Для добавления новой метрики достаточно добавить её в METRICS_CONFIG
 
-# Полная конфигурация всех метрик
-ALL_METRICS = {
+METRICS_CONFIG = {
+    # KPI секция
     "avg_response_time_api": {
+        "section": "KPI",
         "label": "Среднее время ответа API",
         "promql": 'avg(rate(jetty_server_requests_seconds_sum{outcome="SUCCESS",status="200"}[1m])) / avg(rate(jetty_server_requests_seconds_count{outcome="SUCCESS",status="200"}[1m]))',
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "сек",
         "color": "#e74c3c",
         "format": "fixed3",
         "thresholds": {"warning": 0.5, "critical": 1.0}
     },
-    "get_response_time": {
-        "label": "Время ответа GET запросов",
-        "promql": 'avg(rate(jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}[1m])) / avg(rate(jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}[1m]))',
-        "type": "trend+bar",
-        "unit": "сек",
-        "color": "#3498db",
-        "format": "fixed3",
-        "thresholds": {"warning": 0.3, "critical": 0.8}
-    },
-    "post_response_time": {
-        "label": "Время ответа POST запросов",
-        "promql": 'avg(rate(jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}[1m])) / avg(rate(jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}[1m]))',
-        "type": "trend+bar",
-        "unit": "сек",
-        "color": "#9b59b6",
-        "format": "fixed3",
-        "thresholds": {"warning": 0.5, "critical": 1.2}
-    },
     "system_cpu_usage": {
+        "section": "KPI",
         "label": "Загрузка CPU",
         "promql": "system_cpu_usage",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "%",
         "color": "#f39c12",
         "format": "percent",
         "thresholds": {"warning": 85, "critical": 95}
     },
     "jvm_memory_used": {
+        "section": "KPI",
         "label": "Используемая память JVM",
         "promql": 'jvm_memory_used_bytes{area="heap",id="Tenured Gen"} / 1024 / 1024',
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "МБ",
         "color": "#27ae60",
         "format": "fixed1",
         "thresholds": {"warning": 750, "critical": 900}
     },
     "postgres_connections": {
+        "section": "KPI",
         "label": "Активные подключения к БД",
         "promql": 'postgres_connections{database="db01"}',
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "",
         "color": "#1abc9c",
         "format": "fixed0",
         "thresholds": {"warning": 100, "critical": 150}
     },
     "postgres_locks": {
+        "section": "KPI",
         "label": "Активные блокировки в БД",
         "promql": 'postgres_locks{database="db01"}',
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "",
         "color": "#e67e22",
         "format": "fixed0",
         "thresholds": {"warning": 10, "critical": 50}
     },
     "gc_pause_time": {
+        "section": "KPI",
         "label": "Время паузы GC",
         "promql": "jvm_gc_pause_seconds_sum",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "сек",
         "color": "#34495e",
         "format": "fixed2",
         "thresholds": {"warning": 1.0, "critical": 3.0}
     },
     "system_load": {
+        "section": "KPI",
         "label": "Нагрузка системы (1 мин)",
         "promql": "system_load_average_1m",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "",
         "color": "#95a5a6",
         "format": "fixed2",
         "thresholds": {"warning": 2.0, "critical": 4.0}
     },
     "tx_pool_size": {
+        "section": "KPI",
         "label": "Размер пула транзакций",
         "promql": "tx_pool_size",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "",
         "color": "#8e44ad",
         "format": "fixed0",
         "thresholds": {"warning": 1000, "critical": 5000}
     },
+    
+    # Transactions секция
     "postgres_transactions_total": {
+        "section": "Transactions",
         "label": "Транзакции PostgreSQL",
         "promql": 'rate(postgres_transactions_total{database="db01"}[1m])',
         "type": "trend",
@@ -162,6 +118,7 @@ ALL_METRICS = {
         "format": "fixed0"
     },
     "postgres_rows_inserted_total": {
+        "section": "Transactions",
         "label": "Вставки в БД",
         "promql": 'rate(postgres_rows_inserted_total{database="db01"}[1m])',
         "type": "trend",
@@ -170,6 +127,7 @@ ALL_METRICS = {
         "format": "fixed0"
     },
     "postgres_rows_updated_total": {
+        "section": "Transactions",
         "label": "Обновления в БД",
         "promql": 'rate(postgres_rows_updated_total{database="db01"}[1m])',
         "type": "trend",
@@ -178,6 +136,7 @@ ALL_METRICS = {
         "format": "fixed0"
     },
     "postgres_rows_deleted_total": {
+        "section": "Transactions",
         "label": "Удаления из БД",
         "promql": 'rate(postgres_rows_deleted_total{database="db01"}[1m])',
         "type": "trend",
@@ -185,7 +144,10 @@ ALL_METRICS = {
         "color": "#e74c3c",
         "format": "fixed0"
     },
+    
+    # PostgreSQL секция
     "postgres_blocks_reads_total": {
+        "section": "PostgreSQL",
         "label": "Прочтения блоков с диска",
         "promql": 'rate(postgres_blocks_reads_total{database="db01"}[1m])',
         "type": "trend",
@@ -194,6 +156,7 @@ ALL_METRICS = {
         "format": "fixed0"
     },
     "postgres_dead_rows": {
+        "section": "PostgreSQL",
         "label": "Мертвые строки в БД",
         "promql": 'postgres_dead_rows{database="db01"}',
         "type": "trend",
@@ -202,15 +165,19 @@ ALL_METRICS = {
         "format": "fixed0",
         "thresholds": {"warning": 10000, "critical": 20000}
     },
+    
+    # JVM секция
     "jvm_threads_live_threads": {
+        "section": "JVM",
         "label": "Активные потоки JVM",
         "promql": "jvm_threads_live_threads",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "",
         "color": "#9b59b6",
         "format": "fixed0"
     },
     "jvm_classes_loaded_classes": {
+        "section": "JVM",
         "label": "Загруженные классы JVM",
         "promql": "jvm_classes_loaded_classes",
         "type": "trend",
@@ -218,39 +185,46 @@ ALL_METRICS = {
         "color": "#1abc9c",
         "format": "fixed0"
     },
+    
+    # Jetty секция
     "jetty_server_requests_seconds_avg": {
+        "section": "Jetty",
         "label": "Среднее время запросов Jetty",
         "promql": "jetty_server_requests_seconds_avg",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "сек",
         "color": "#e74c3c",
         "format": "fixed3"
     },
     "jetty_get_avg_time": {
+        "section": "Jetty",
         "label": "Среднее время GET запросов",
         "promql": "jetty_get_avg_time",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "сек",
         "color": "#3498db",
         "format": "fixed3"
     },
     "jetty_post_avg_time": {
+        "section": "Jetty",
         "label": "Среднее время POST запросов",
         "promql": "jetty_post_avg_time",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "сек",
         "color": "#9b59b6",
         "format": "fixed3"
     },
     "jetty_connections_current_connections": {
+        "section": "Jetty",
         "label": "Текущие подключения Jetty",
         "promql": "jetty_connections_current_connections",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "",
         "color": "#f39c12",
         "format": "fixed0"
     },
     "jetty_connections_bytes_in_bytes_sum": {
+        "section": "Jetty",
         "label": "Входящий трафик Jetty",
         "promql": "jetty_connections_bytes_in_bytes_sum",
         "type": "trend",
@@ -259,6 +233,7 @@ ALL_METRICS = {
         "format": "mb"
     },
     "jetty_connections_bytes_out_bytes_sum": {
+        "section": "Jetty",
         "label": "Исходящий трафик Jetty",
         "promql": "jetty_connections_bytes_out_bytes_sum",
         "type": "trend",
@@ -266,23 +241,76 @@ ALL_METRICS = {
         "color": "#e67e22",
         "format": "mb"
     },
+    
+    # System секция
     "system_cpu_count": {
+        "section": "System",
         "label": "Количество CPU ядер",
         "promql": "system_cpu_count",
-        "type": "bar",
+        "type": "trend",
         "unit": "",
         "color": "#95a5a6",
         "format": "fixed0"
     },
+    
+    # Дополнительные метрики (не в основных секциях)
+    "get_response_time": {
+        "section": "API",
+        "label": "Время ответа GET запросов",
+        "promql": 'avg(rate(jetty_server_requests_seconds_sum{method="GET",outcome="SUCCESS",status="200"}[1m])) / avg(rate(jetty_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200"}[1m]))',
+        "type": "trend",
+        "unit": "сек",
+        "color": "#3498db",
+        "format": "fixed3",
+        "thresholds": {"warning": 0.3, "critical": 0.8}
+    },
+    "post_response_time": {
+        "section": "API",
+        "label": "Время ответа POST запросов",
+        "promql": 'avg(rate(jetty_server_requests_seconds_sum{method="POST",outcome="SUCCESS",status="200"}[1m])) / avg(rate(jetty_server_requests_seconds_count{method="POST",outcome="SUCCESS",status="200"}[1m]))',
+        "type": "trend",
+        "unit": "сек",
+        "color": "#9b59b6",
+        "format": "fixed3",
+        "thresholds": {"warning": 0.5, "critical": 1.2}
+    },
     "jvm_gc_pause_seconds_sum": {
+        "section": "JVM",
         "label": "Суммарное время пауз GC (JVM)",
         "promql": "jvm_gc_pause_seconds_sum",
-        "type": "trend+bar",
+        "type": "trend",
         "unit": "сек",
         "color": "#34495e",
         "format": "fixed2"
     }
 }
+
+# ============================================================================
+# АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ СЕКЦИЙ И МЕТРИК
+# ============================================================================
+
+def generate_sections_from_config():
+    """Автоматически генерирует секции из централизованной конфигурации"""
+    sections = {}
+    for metric_id, config in METRICS_CONFIG.items():
+        section_name = config.get("section", "Other")
+        if section_name not in sections:
+            sections[section_name] = []
+        sections[section_name].append(metric_id)
+    return sections
+
+def generate_all_metrics_from_config():
+    """Автоматически генерирует ALL_METRICS из централизованной конфигурации"""
+    all_metrics = {}
+    for metric_id, config in METRICS_CONFIG.items():
+        # Копируем конфигурацию без поля section
+        metric_config = {k: v for k, v in config.items() if k != "section"}
+        all_metrics[metric_id] = metric_config
+    return all_metrics
+
+# Автоматически генерируем секции и метрики
+SECTIONS = generate_sections_from_config()
+ALL_METRICS = generate_all_metrics_from_config()
 
 # Конфигурация KPI-метрик для модернизированного дашборда (для обратной совместимости)
 KPI_METRIC_IDS = [
@@ -309,29 +337,6 @@ KPI_METRICS_CONFIG = [
 ]
 
 # Список всех метрик для инициализации
-INITIAL_METRICS = [
-    'tx_pool_size',
-    'jetty_server_requests_seconds_avg',
-    'jetty_get_avg_time',
-    'jetty_post_avg_time',
-    'system_cpu_usage',
-    'postgres_locks',
-    'gc_pause_time',
-    'postgres_connections',
-    'jvm_memory_used',
-    'system_load',
-    'postgres_rows_inserted_total',
-    'postgres_transactions_total',
-    'postgres_rows_updated_total',
-    'postgres_rows_deleted_total',
-    'postgres_blocks_reads_total',
-    'postgres_dead_rows',
-    'jvm_threads_live_threads',
-    'jvm_classes_loaded_classes',
-    'jetty_connections_current_connections',
-    'jetty_connections_bytes_in_bytes_sum',
-    'jetty_connections_bytes_out_bytes_sum',
-    'system_cpu_count'
-]
+INITIAL_METRICS = list(METRICS_CONFIG.keys())
 
 METRIC_HISTORY_SECONDS = int(os.getenv("METRIC_HISTORY_SECONDS", 3600))  # 1 час

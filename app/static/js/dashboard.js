@@ -189,15 +189,19 @@ async function loadSectionsData() {
             renderSections();
         } 
         
-        // Загружаем данные для каждой секции
-        console.log('📥 Loading data for sections:', Object.keys(sectionsConfig));
+        // Загружаем все данные метрик одним batch запросом
+        console.log('📥 Loading batch metrics data...');
+        const batchData = await loadBatchMetricsData();
+        
+        // Обновляем данные для каждой секции
+        console.log('📥 Updating sections with batch data...');
         const sectionPromises = Object.keys(sectionsConfig).map(async (sectionName) => {
-            console.log(`📥 Loading data for section: ${sectionName}`);
-            await loadSectionData(sectionName);
+            console.log(`📥 Updating section: ${sectionName}`);
+            await updateSectionWithBatchData(sectionName, batchData);
         });
         
         await Promise.all(sectionPromises);
-        console.log('✅ All sections data loaded successfully');
+        console.log('✅ All sections updated successfully');
         
         updateStatus('ok');
         
@@ -211,6 +215,136 @@ async function loadSectionsData() {
             console.log('🔄 First load completed, hiding loading indicator');
             hideLoading();
             firstLoad = false;
+        }
+    }
+}
+
+/**
+ * Загружает все данные метрик одним batch запросом
+ */
+async function loadBatchMetricsData() {
+    console.log('📊 Loading batch metrics data...');
+    
+    const params = new URLSearchParams({
+        interval: currentInterval.toString()
+    });
+    
+    const url = `/api/metrics/batch/history?${params}`;
+    console.log(`🔗 Fetching batch data from: ${url}`);
+    
+    try {
+        const response = await fetch(url);
+        console.log(`📡 Batch response status:`, response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`📊 Received batch data for ${Object.keys(data.data || {}).length} metrics`);
+        
+        return data.data || {};
+        
+    } catch (error) {
+        console.error(`❌ Failed to load batch metrics data:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Обновляет секцию с batch данными
+ */
+async function updateSectionWithBatchData(sectionName, batchData) {
+    const normId = normalizeId(sectionName);
+    console.log(`📥 Updating section ${sectionName} with batch data`);
+    
+    try {
+        const sectionMetrics = sectionsConfig[sectionName] || [];
+        console.log(`📊 Section ${sectionName} has ${sectionMetrics.length} metrics:`, sectionMetrics);
+        
+        const content = document.getElementById(`section-content-${normId}`);
+        console.log(`🎯 Section content element:`, content ? 'found' : 'not found');
+        
+        if (!content) {
+            console.warn(`⚠️ Content element for section ${sectionName} not found`);
+            return;
+        }
+        
+        // Удаляем индикатор загрузки в секции
+        const loadingIndicator = content.querySelector('.loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+        
+        // Если в секции нет метрик — показываем stub и выходим
+        if (sectionMetrics.length === 0) {
+            console.log(`📭 Section ${sectionName} has no metrics`);
+            // Если ещё нет содержимого, создаём сообщение
+            if (!content.hasChildNodes()) {
+                content.innerHTML = '<div class="no-data">Нет метрик в этой секции</div>';
+            }
+            return;
+        }
+        
+        // Обрабатываем метрики секции с batch данными
+        console.log(`🔄 Processing ${sectionMetrics.length} metrics for section ${sectionName}`);
+        
+        sectionMetrics.forEach(metricId => {
+            const metricData = batchData[metricId];
+            const existingCard = document.getElementById(`metric-${metricId}`);
+            
+            if (existingCard) {
+                console.log(`🔄 Updating existing card for metric: ${metricId}`);
+                // Если карточка уже существует, обновляем её
+                if (metricData && metricData.status === 'success') {
+                    const config = allMetrics[metricId];
+                    updateMetricCard(metricId, {
+                        config: config,
+                        history: metricData.data
+                    });
+                } else {
+                    existingCard.innerHTML = `<div class="metric-header"><h4 class="metric-title">${metricId}</h4></div><div class="metric-error">Ошибка: Нет данных</div>`;
+                }
+            } else {
+                console.log(`🆕 Creating new card for metric: ${metricId}`);
+                // Если карточки нет, создаём новую и добавляем
+                let error = null;
+                let data = null;
+                
+                if (metricData && metricData.status === 'success') {
+                    data = {
+                        config: allMetrics[metricId],
+                        history: metricData.data
+                    };
+                } else {
+                    error = 'Нет данных';
+                }
+                
+                const metricCard = createMetricCard(metricId, data, error);
+                content.appendChild(metricCard);
+                
+                // Отрисовываем графики после добавления новой карточки
+                if (data && data.history && data.history.result && data.history.result.length > 0) {
+                    const config = data.config;
+                    const history = data.history;
+                    const resultObj = history.result[0];
+                    if (resultObj.values && resultObj.values.length > 0) {
+                        if (config.type.includes('trend')) {
+                            renderTrendChart(config, resultObj.values, `trend-${metricId}`);
+                        }
+                    }
+                }
+            }
+        });
+        
+        console.log(`✅ Section ${sectionName} updated successfully`);
+        
+    } catch (error) {
+        console.error(`❌ Failed to update section ${sectionName}:`, error);
+        console.error('Error stack:', error.stack);
+        const content = document.getElementById(`section-content-${normId}`);
+        if (content) {
+            content.innerHTML = `<div class="metric-error">Ошибка обновления секции: ${error.message}</div>`;
         }
     }
 }
@@ -294,145 +428,9 @@ function toggleSection(sectionName) {
     }
 }
 
-/**
- * Загружает данные для конкретной секции
- */
-async function loadSectionData(sectionName) {
-    const normId = normalizeId(sectionName);
-    console.log(`📥 Loading data for section: ${sectionName}`);
-    try {
-        const sectionMetrics = sectionsConfig[sectionName] || [];
-        console.log(`📊 Section ${sectionName} has ${sectionMetrics.length} metrics:`, sectionMetrics);
-        
-        const content = document.getElementById(`section-content-${normId}`);
-        console.log(`🎯 Section content element:`, content ? 'found' : 'not found');
-        
-        if (!content) {
-            console.warn(`⚠️ Content element for section ${sectionName} not found`);
-            return;
-        }
-        
-        // Удаляем индикатор загрузки в секции
-        const loadingIndicator = content.querySelector('.loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.remove();
-        }
-        
-        // Если в секции нет метрик — показываем stub и выходим
-        if (sectionMetrics.length === 0) {
-            console.log(`📭 Section ${sectionName} has no metrics`);
-            // Если ещё нет содержимого, создаём сообщение
-            if (!content.hasChildNodes()) {
-                content.innerHTML = '<div class="no-data">Нет метрик в этой секции</div>';
-            }
-            return;
-        }
-        
-        // Загружаем данные для каждой метрики
-        console.log(`🔄 Loading ${sectionMetrics.length} metrics for section ${sectionName}`);
-        const metricPromises = sectionMetrics.map(async (metricId) => {
-            try {
-                console.log(`📊 Loading metric: ${metricId}`);
-                const metricData = await loadMetricData(metricId);
-                console.log(`✅ Metric ${metricId} loaded successfully`);
-                return { id: metricId, data: metricData };
-            } catch (error) {
-                console.error(`❌ Failed to load metric ${metricId}:`, error);
-                return { id: metricId, data: null, error: error.message };
-            }
-        });
-        
-        const results = await Promise.all(metricPromises);
-        console.log(`📊 Section ${sectionName} results:`, results.length, 'metrics processed');
 
-        results.forEach(result => {
-            const existingCard = document.getElementById(`metric-${result.id}`);
-            if (existingCard) {
-                console.log(`🔄 Updating existing card for metric: ${result.id}`);
-                // Если карточка уже существует, обновляем её
-                if (result.data) {
-                    updateMetricCard(result.id, result.data);
-                } else if (result.error) {
-                    existingCard.innerHTML = `<div class="metric-header"><h4 class="metric-title">${result.id}</h4></div><div class="metric-error">Ошибка: ${result.error}</div>`;
-                }
-            } else {
-                console.log(`🆕 Creating new card for metric: ${result.id}`);
-                // Если карточки нет, создаём новую и добавляем
-                const metricCard = createMetricCard(result.id, result.data, result.error);
-                content.appendChild(metricCard);
-                // Отрисовываем графики после добавления новой карточки
-                if (result.data && result.data.history && result.data.history.result && result.data.history.result.length > 0) {
-                    const config = result.data.config;
-                    const history = result.data.history;
-                    const metricId = result.id;
-                    const resultObj = history.result[0];
-                    if (resultObj.values && resultObj.values.length > 0) {
-                        if (config.type.includes('trend')) {
-                            renderTrendChart(config, resultObj.values, `trend-${metricId}`);
-                        }
-                        if (config.type.includes('bar')) {
-                            renderBarChart(config, resultObj.values, `bar-${metricId}`);
-                        }
-                    }
-                }
-            }
-        });
-        
-        console.log(`✅ Section ${sectionName} data loading completed`);
-        
-    } catch (error) {
-        console.error(`❌ Failed to load section ${sectionName}:`, error);
-        console.error('Error stack:', error.stack);
-        const content = document.getElementById(`section-content-${normId}`);
-        if (content) {
-            content.innerHTML = `<div class="metric-error">Ошибка загрузки секции: ${error.message}</div>`;
-        }
-    }
-}
 
-/**
- * Загружает данные для конкретной метрики
- */
-async function loadMetricData(metricId) {
-    console.log(`📊 Loading metric data for: ${metricId}`);
-    
-    if (!allMetrics[metricId]) {
-        console.error(`❌ Metric ${metricId} not found in configuration`);
-        throw new Error(`Метрика '${metricId}' не найдена в конфигурации`);
-    }
-    
-    const metricConfig = allMetrics[metricId];
-    console.log(`📋 Metric config for ${metricId}:`, metricConfig);
-    
-    // Загружаем историю метрики
-    const params = new URLSearchParams({
-        interval: currentInterval.toString()
-    });
-    
-    const url = `/api/metrics/${metricId}/history?${params}`;
-    console.log(`🔗 Fetching metric data from: ${url}`);
-    
-    try {
-        const response = await fetch(url);
-        console.log(`📡 Response status for ${metricId}:`, response.status);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log(`📊 Received data for ${metricId}:`, data);
-        
-        return {
-            config: metricConfig,
-            history: data.data || data
-        };
-        
-    } catch (error) {
-        console.error(`❌ Failed to load metric ${metricId}:`, error);
-        throw error;
-    }
-}
+
 
 /**
  * Создает карточку метрики
@@ -501,19 +499,12 @@ function createMetricCard(metricId, data, error) {
             console.warn(`⚠️ No current value for ${metricId}`);
         }
 
-        // Контейнеры для графиков
+        // Контейнеры для графиков - только trend
         if (data.config.type.includes('trend')) {
             const trendContainer = document.createElement('div');
             trendContainer.id = `trend-${metricId}`;
             trendContainer.className = 'metric-chart';
             content.appendChild(trendContainer);
-        }
-        
-        if (data.config.type.includes('bar')) {
-            const barContainer = document.createElement('div');
-            barContainer.id = `bar-${metricId}`;
-            barContainer.className = 'metric-chart';
-            content.appendChild(barContainer);
         }
     } else {
         const noDataDisplay = document.createElement('div');
@@ -591,7 +582,7 @@ function updateMetricCard(metricId, data) {
                 }
             }
 
-            // Обновляем графики
+            // Обновляем графики - только trend
             if (data.history?.result?.[0]?.values) {
                 const values = data.history.result[0].values;
                 
@@ -599,13 +590,6 @@ function updateMetricCard(metricId, data) {
                     const trendContainer = document.getElementById(`trend-${metricId}`);
                     if (trendContainer) {
                         renderTrendChart(data.config, values, `trend-${metricId}`);
-                    }
-                }
-                
-                if (data.config.type.includes('bar')) {
-                    const barContainer = document.getElementById(`bar-${metricId}`);
-                    if (barContainer) {
-                        renderBarChart(data.config, values, `bar-${metricId}`);
                     }
                 }
             }
@@ -811,68 +795,6 @@ function renderTrendChart(config, values, containerId) {
 }
 
 /**
- * Рендерит гистограмму (bar)
- */
-function renderBarChart(config, values, containerId) {
-    if (!values || values.length === 0) {
-        console.warn(`⚠️ No data for bar chart: ${containerId}`);
-        return;
-    }
-
-    try {
-        const container = document.getElementById(containerId);
-        if (!container) {
-            console.warn(`⚠️ Container not found: ${containerId}`);
-            return;
-        }
-
-        // Подготавливаем данные
-        const dataValues = values.map(v => v[1]).filter(v => v !== null && v !== undefined && !isNaN(v));
-        if (dataValues.length === 0) {
-            console.warn(`⚠️ No valid data for bar chart: ${containerId}`);
-            return;
-        }
-
-        // Вычисляем статистику для гистограммы
-        const minValue = Math.min(...dataValues);
-        const maxValue = Math.max(...dataValues);
-        const avgValue = dataValues.reduce((sum, val) => sum + val, 0) / dataValues.length;
-        
-        // Создаем гистограмму
-        const trace = {
-            x: dataValues,
-            type: 'histogram',
-            nbinsx: Math.min(20, Math.max(5, Math.sqrt(dataValues.length))),
-            marker: { 
-                color: config.color || '#3498db',
-                opacity: 0.7
-            },
-            name: config.label || containerId
-        };
-
-        const layout = {
-            margin: { t: 20, b: 40, l: 50, r: 20 },
-            height: 250,
-            xaxis: { 
-                title: config.unit || 'Значение',
-                range: [minValue * 0.9, maxValue * 1.1]
-            },
-            yaxis: { 
-                title: 'Количество',
-                rangemode: 'tozero'
-            },
-            showlegend: false
-        };
-
-        Plotly.newPlot(containerId, [trace], layout);
-        console.log(`✅ Bar chart rendered for ${containerId}: ${dataValues.length} points, avg=${avgValue.toFixed(3)}`);
-
-    } catch (error) {
-        console.error(`❌ Failed to render bar chart for ${containerId}:`, error);
-    }
-}
-
-/**
  * Экспортирует отчёт
  */
 async function exportReport() {
@@ -938,12 +860,6 @@ async function generateReportHtml() {
                                 <div style="flex: 2;">
                                     <h5>Временной ряд</h5>
                                     <div id="trend-${metricId}-export" style="height: 250px;"></div>
-                                </div>
-                            ` : ''}
-                            ${config.type.includes('bar') ? `
-                                <div style="flex: 1;">
-                                    <h5>Распределение</h5>
-                                    <div id="bar-${metricId}-export" style="height: 250px;"></div>
                                 </div>
                             ` : ''}
                         </div>
@@ -1025,7 +941,7 @@ async function generateReportHtml() {
                                             const timestamps = result.values.map(([ts, _]) => new Date(ts * 1000));
                                             const values = result.values.map(([_, v]) => v);
                                             
-                                            // Рендерим графики
+                                            // Рендерим графики - только trend
                                             if (config.type.includes('trend')) {
                                                 const trendData = [{
                                                     x: timestamps,
@@ -1045,24 +961,6 @@ async function generateReportHtml() {
                                                 };
                                                 
                                                 Plotly.newPlot('trend-' + metricId + '-export', trendData, trendLayout);
-                                            }
-                                            
-                                            if (config.type.includes('bar')) {
-                                                const barData = [{
-                                                    x: values,
-                                                    type: 'histogram',
-                                                    nbinsx: 10,
-                                                    marker: { color: config.color, opacity: 0.7 }
-                                                }];
-                                                
-                                                const barLayout = {
-                                                    margin: { t: 20, b: 40, l: 50, r: 20 },
-                                                    height: 250,
-                                                    xaxis: { title: config.unit || 'Значение' },
-                                                    yaxis: { title: 'Количество' }
-                                                };
-                                                
-                                                Plotly.newPlot('bar-' + metricId + '-export', barData, barLayout);
                                             }
                                         }
                                     }

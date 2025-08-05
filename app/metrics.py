@@ -7,12 +7,19 @@ if os.name == 'nt':  # Windows
     CACHE_FILE = os.path.join(os.getcwd(), 'metrics_cache.json')
 else:  # Unix/Linux
     CACHE_FILE = '/tmp/metrics_cache.json'
-SAVE_INTERVAL = 60
+
+# Оптимизированные настройки кэша
+SAVE_INTERVAL = 60  # Сохраняем каждую минуту
+MAX_CACHE_SIZE_MB = 50  # Максимальный размер кэша в МБ
+MAX_HISTORY_POINTS = 1000  # Максимальное количество точек истории на метрику
+CACHE_CLEANUP_INTERVAL = 300  # Очистка кэша каждые 5 минут
+
 last_save_time = 0
+last_cleanup_time = 0
 
 def load_cache_from_file():
     """
-    Загружает кэш из файла с полной обработкой ошибок
+    Загружает кэш из файла с полной обработкой ошибок и оптимизацией
     """
     try:
         # Проверяем существование файла
@@ -24,6 +31,15 @@ def load_cache_from_file():
         file_size = os.path.getsize(CACHE_FILE)
         if file_size == 0:
             print(f"[DEBUG] Cache file {CACHE_FILE} is empty, starting with empty cache")
+            return
+        
+        # Проверяем размер файла на превышение лимита
+        if file_size > MAX_CACHE_SIZE_MB * 1024 * 1024:
+            print(f"[WARNING] Cache file {CACHE_FILE} is too large ({file_size / 1024 / 1024:.1f}MB), starting with empty cache")
+            # Создаем резервную копию большого файла
+            backup_file = f"{CACHE_FILE}.large.{int(time.time())}"
+            os.rename(CACHE_FILE, backup_file)
+            print(f"[INFO] Large cache file moved to {backup_file}")
             return
         
         # Читаем файл
@@ -46,19 +62,30 @@ def load_cache_from_file():
         metrics = data.get("metrics", {})
         history = data.get("history", {})
         
+        # Очищаем старые данные истории
+        now = time.time()
+        cleaned_history = {}
+        for name, vals in history.items():
+            if isinstance(vals, list):
+                # Фильтруем данные старше 1 часа
+                recent_vals = [v for v in vals if isinstance(v, list) and len(v) >= 2 and v[0] > now - 3600]
+                if recent_vals:
+                    # Ограничиваем количество точек
+                    if len(recent_vals) > MAX_HISTORY_POINTS:
+                        recent_vals = recent_vals[-MAX_HISTORY_POINTS:]
+                    cleaned_history[name] = recent_vals
+            else:
+                print(f"[WARNING] Invalid history data for {name}, skipping")
+        
         # Загружаем данные в глобальную структуру
         with lock:
             metrics_data["metrics"] = metrics
             # Создаем deque для каждой метрики с правильным maxlen
-            for name, vals in history.items():
-                if isinstance(vals, list):
-                    # Конвертируем список в deque с ограничением размера
-                    deq = deque(vals, maxlen=HISTORY_POINTS)
-                    metrics_data["history"][name] = deq
-                else:
-                    print(f"[WARNING] Invalid history data for {name}, skipping")
+            for name, vals in cleaned_history.items():
+                deq = deque(vals, maxlen=MAX_HISTORY_POINTS)
+                metrics_data["history"][name] = deq
                     
-        print(f"[DEBUG] Cache loaded from {CACHE_FILE}: {len(metrics)} metrics, {len(history)} history entries")
+        print(f"[DEBUG] Cache loaded from {CACHE_FILE}: {len(metrics)} metrics, {len(cleaned_history)} history entries")
         
     except FileNotFoundError:
         print(f"[DEBUG] Cache file {CACHE_FILE} not found, starting with empty cache")
@@ -78,24 +105,48 @@ def load_cache_from_file():
 
 def save_cache_to_file():
     """
-    Сохраняет кэш в файл с полной обработкой ошибок
+    Сохраняет кэш в файл с полной обработкой ошибок и оптимизацией
     """
-    global last_save_time
+    global last_save_time, last_cleanup_time
     now = time.time()
     
     # Проверяем интервал сохранения
     if now - last_save_time < SAVE_INTERVAL:
         return
+    
+    # Периодическая очистка кэша
+    if now - last_cleanup_time > CACHE_CLEANUP_INTERVAL:
+        cleanup_cache()
+        last_cleanup_time = now
         
     try:
-        # Подготавливаем данные для сохранения
+        # Подготавливаем данные для сохранения с оптимизацией
         with lock:
+            # Очищаем старые данные перед сохранением
+            cleaned_history = {}
+            for name, deq in metrics_data["history"].items():
+                if deq:
+                    # Фильтруем данные старше 1 часа
+                    recent_vals = [v for v in deq if isinstance(v, list) and len(v) >= 2 and v[0] > now - 3600]
+                    if recent_vals:
+                        # Ограничиваем количество точек
+                        if len(recent_vals) > MAX_HISTORY_POINTS:
+                            recent_vals = recent_vals[-MAX_HISTORY_POINTS:]
+                        cleaned_history[name] = recent_vals
+            
             data = {
                 "metrics": metrics_data["metrics"],
-                "history": {name: list(deq) for name, deq in metrics_data["history"].items()},
+                "history": cleaned_history,
                 "last_updated": metrics_data["last_updated"],
-                "cache_version": "1.0"  # Для будущей совместимости
+                "cache_version": "2.0",  # Обновленная версия кэша
+                "cache_timestamp": now
             }
+        
+        # Проверяем размер данных перед сохранением
+        data_size = len(json.dumps(data, separators=(',', ':')))
+        if data_size > MAX_CACHE_SIZE_MB * 1024 * 1024:
+            print(f"[WARNING] Cache data is too large ({data_size / 1024 / 1024:.1f}MB), skipping save")
+            return
         
         # Создаем временный файл для атомарной записи
         temp_file = f"{CACHE_FILE}.tmp"
@@ -124,6 +175,38 @@ def save_cache_to_file():
             print(f"[ERROR] Failed to save cache to alternative location: {alt_error}")
     except Exception as e:
         print(f"[ERROR] Unexpected error saving cache to {CACHE_FILE}: {e}")
+
+def cleanup_cache():
+    """
+    Очищает кэш от старых данных
+    """
+    global last_cleanup_time
+    now = time.time()
+    
+    try:
+        with lock:
+            # Очищаем старые данные истории
+            cleaned_history = {}
+            for name, deq in metrics_data["history"].items():
+                if deq:
+                    # Фильтруем данные старше 1 часа
+                    recent_vals = [v for v in deq if isinstance(v, list) and len(v) >= 2 and v[0] > now - 3600]
+                    if recent_vals:
+                        # Ограничиваем количество точек
+                        if len(recent_vals) > MAX_HISTORY_POINTS:
+                            recent_vals = recent_vals[-MAX_HISTORY_POINTS:]
+                        cleaned_history[name] = recent_vals
+            
+            # Обновляем историю
+            metrics_data["history"].clear()
+            for name, vals in cleaned_history.items():
+                deq = deque(vals, maxlen=MAX_HISTORY_POINTS)
+                metrics_data["history"][name] = deq
+        
+        print(f"[DEBUG] Cache cleaned: {len(cleaned_history)} history entries retained")
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to cleanup cache: {e}")
 
 def ensure_cache_directory():
     """
@@ -168,7 +251,7 @@ HISTORY_POINTS = int(HISTORY_SECONDS / UPDATE_INTERVAL)
 
 metrics_data = {
     "metrics": {},
-    "history": defaultdict(lambda: deque(maxlen=HISTORY_POINTS)),
+    "history": defaultdict(lambda: deque(maxlen=MAX_HISTORY_POINTS)),
     "last_updated": 0,
     "last_error": None
 }

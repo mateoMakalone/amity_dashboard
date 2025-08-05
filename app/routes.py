@@ -76,6 +76,53 @@ def metrics_batch():
             "error": f"Failed to load batch metrics: {str(e)}"
         }), 500
 
+@dashboard_bp.route('/api/metrics/batch/history')
+def batch_metrics_history():
+    """
+    Возвращает историю всех метрик одним запросом для оптимизации фронтенда
+    """
+    try:
+        # Параметр interval определяет окно выборки в минутах
+        interval = request.args.get("interval", "30")
+        try:
+            interval_minutes = int(interval)
+        except ValueError:
+            interval_minutes = 30
+
+        now = int(time.time())
+        start_time = now - interval_minutes * 60
+
+        history = MetricsService.get_metrics_history()
+        
+        # Фильтруем историю по времени и форматируем для фронтенда
+        filtered_history = {}
+        for metric_id, values in history.items():
+            if metric_id in ALL_METRICS:  # Только конфигурированные метрики
+                filtered = [v for v in values if v[0] >= start_time]
+                if filtered:  # Только если есть данные
+                    filtered_history[metric_id] = {
+                        "status": "success",
+                        "data": {
+                            "result": [{
+                                "metric": {"__name__": metric_id},
+                                "values": [[ts, val] for ts, val in filtered]
+                            }]
+                        }
+                    }
+        
+        return jsonify({
+            "status": "success",
+            "data": filtered_history,
+            "interval": interval_minutes,
+            "timestamp": now
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": f"Failed to get batch metrics history: {str(e)}"
+        }), 500
+
 @dashboard_bp.route('/api/metrics/history')
 def metrics_history():
     """
